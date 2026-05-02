@@ -298,6 +298,9 @@ async function handleAddProduct(e) {
   const imageFile = document.getElementById('productImage').files[0];
   if (imageFile) {
     formData.append('image', imageFile);
+  } else {
+    // If no image provided, use a placeholder
+    formData.append('image', '/uploads/placeholder.svg');
   }
 
   try {

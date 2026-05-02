@@ -4,25 +4,33 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// If Cloudinary env vars are set, use cloud storage
+// If Cloudinary env vars are set AND not disabled, use cloud storage
 // Otherwise fall back to local disk storage (for local dev without Cloudinary)
 const useCloudinary = !!(
-  !process.env.DISABLE_CLOUDINARY &&
   process.env.CLOUDINARY_CLOUD_NAME &&
   process.env.CLOUDINARY_API_KEY &&
-  process.env.CLOUDINARY_API_SECRET
+  process.env.CLOUDINARY_API_SECRET &&
+  !process.env.DISABLE_CLOUDINARY
 );
 
 if (useCloudinary) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key:    process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-  });
+  try {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key:    process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET
+    });
+    console.log('✓ Cloudinary configured');
+  } catch (err) {
+    console.error('✗ Cloudinary config error:', err.message);
+    console.log('Falling back to local storage');
+  }
+} else {
+  console.log('ℹ Using local storage for file uploads (Cloudinary disabled or not configured)');
 }
 
 // ─── Product image upload ────────────────────────────────────────────────────
-const productStorage = useCloudinary
+const productStorage = useCloudinary && cloudinary.config().cloud_name
   ? new CloudinaryStorage({
       cloudinary,
       params: {
@@ -51,7 +59,7 @@ const uploadProduct = multer({
 });
 
 // ─── Banner image upload ─────────────────────────────────────────────────────
-const bannerStorage = useCloudinary
+const bannerStorage = useCloudinary && cloudinary.config().cloud_name
   ? new CloudinaryStorage({
       cloudinary,
       params: {
@@ -80,7 +88,7 @@ const uploadBanner = multer({
 });
 
 // ─── Payment proof upload — Cloudinary in production, local in dev ───────────
-const paymentStorage = useCloudinary
+const paymentStorage = useCloudinary && cloudinary.config().cloud_name
   ? new CloudinaryStorage({
       cloudinary,
       params: {

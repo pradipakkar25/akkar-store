@@ -92,6 +92,20 @@ async function startServer() {
     res.sendFile(path.join(__dirname, 'public', 'order-confirmation.html'));
   });
 
+  // Multer error handling middleware
+  app.use((err, req, res, next) => {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ message: 'File too large. Max 5MB allowed.' });
+    }
+    if (err.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({ message: 'Too many files.' });
+    }
+    if (err.message && err.message.includes('Images only')) {
+      return res.status(400).json({ message: 'Only image files are allowed.' });
+    }
+    next(err);
+  });
+
   // Error handling middleware
   app.use((err, req, res, next) => {
     console.error(err.stack);

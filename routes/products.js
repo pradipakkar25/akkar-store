@@ -7,6 +7,24 @@ const { verifyToken, isAdmin } = require('../middleware/auth');
 const { uploadProduct, getFileUrl } = require('../config/cloudinary');
 const router = express.Router();
 
+// Ensure upload directories exist
+const ensureUploadDirs = () => {
+  const dirs = [
+    path.join(__dirname, '../public/uploads'),
+    path.join(__dirname, '../public/uploads/payment-proofs'),
+    path.join(__dirname, '../public/uploads/banners')
+  ];
+  dirs.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log('Created directory:', dir);
+    }
+  });
+};
+
+// Create directories on startup
+ensureUploadDirs();
+
 // Use unified uploader (Cloudinary in production, local disk in dev)
 const upload = uploadProduct;
 
@@ -41,13 +59,20 @@ router.post('/', verifyToken, isAdmin, upload.single('image'), [
   body('category').trim().notEmpty().withMessage('Category is required'),
   body('stock').isInt({ min: 0 }).withMessage('Valid stock quantity is required')
 ], async (req, res) => {
+  // Handle multer errors
+  if (req.fileValidationError) {
+    return res.status(400).json({ message: req.fileValidationError });
+  }
+
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     console.error('Validation errors:', errors.array());
     // Delete uploaded file if validation fails
     if (req.file) {
       try {
-        fs.unlinkSync(req.file.path);
+        if (req.file.path && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
       } catch (e) {
         console.error('Error deleting file:', e.message);
       }
@@ -93,7 +118,9 @@ router.post('/', verifyToken, isAdmin, upload.single('image'), [
     // Delete uploaded file if save fails
     if (req.file) {
       try {
-        fs.unlinkSync(req.file.path);
+        if (req.file.path && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
       } catch (e) {
         console.error('Error deleting file:', e.message);
       }
