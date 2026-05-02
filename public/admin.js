@@ -640,11 +640,25 @@ async function openOrderDetails(orderId) {
         </select>
 
         <h4>Verification Status:</h4>
-        <p>${order.paymentVerificationStatus || 'none'}</p>
+        <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:1rem;">
+          <select id="paymentVerificationStatus" onchange="updatePaymentVerification('${order._id}')">
+            <option value="none" ${order.paymentVerificationStatus === 'none' ? 'selected' : ''}>None</option>
+            <option value="pending" ${order.paymentVerificationStatus === 'pending' ? 'selected' : ''}>Pending</option>
+            <option value="verified" ${order.paymentVerificationStatus === 'verified' ? 'selected' : ''}>✅ Verified</option>
+            <option value="rejected" ${order.paymentVerificationStatus === 'rejected' ? 'selected' : ''}>❌ Rejected</option>
+          </select>
+        </div>
         ${order.paymentScreenshot ? `
-          <h4>Payment Proof:</h4>
-          <a href="${order.paymentScreenshot}" target="_blank">View uploaded screenshot</a>
-        ` : ''}
+          <h4>💳 Payment Proof Screenshot:</h4>
+          <div style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:0.75rem;padding:1rem;margin:0.75rem 0;">
+            <img src="${order.paymentScreenshot}" alt="Payment proof" style="max-width:100%;max-height:400px;border-radius:0.5rem;margin-bottom:0.75rem;">
+            <br>
+            <a href="${order.paymentScreenshot}" target="_blank" style="display:inline-block;background:#f97316;color:white;padding:0.5rem 1rem;border-radius:0.5rem;text-decoration:none;font-weight:600;">📥 Download Full Image</a>
+          </div>
+        ` : `
+          <h4>💳 Payment Proof Screenshot:</h4>
+          <p style="color:#dc2626;font-weight:600;">❌ No payment proof uploaded yet</p>
+        `}
 
         <h3 style="margin-top: 1rem;">Total: ₹${order.totalPrice}</h3>
 
@@ -723,6 +737,33 @@ async function updatePaymentStatus(orderId) {
     loadOrdersList();
   } catch (error) {
     console.error('Error updating payment:', error);
+  }
+}
+
+// Update payment verification status
+async function updatePaymentVerification(orderId) {
+  const token = localStorage.getItem('token');
+  const paymentVerificationStatus = document.getElementById('paymentVerificationStatus').value;
+
+  try {
+    const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ paymentVerificationStatus })
+    });
+
+    if (!response.ok) {
+      alert('Error updating verification status');
+      return;
+    }
+
+    alert('Verification status updated!');
+    loadOrdersList();
+  } catch (error) {
+    console.error('Error updating verification:', error);
   }
 }
 
