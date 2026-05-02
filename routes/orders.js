@@ -92,6 +92,11 @@ router.post('/payment-request', verifyToken, upload.single('screenshot'), async 
         console.error('❌ Insufficient stock for:', product.name);
         return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
       }
+      
+      // Ensure all item fields are present
+      item.name = product.name;
+      item.price = item.price || product.price;
+      console.log('✓ Item verified:', item.name, 'qty:', item.quantity);
     }
 
     console.log('✓ Stock verified');
