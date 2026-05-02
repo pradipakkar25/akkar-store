@@ -15,62 +15,86 @@ const upload = uploadPayment;
 // Create order after payment screenshot upload (user)
 router.post('/payment-request', verifyToken, upload.single('screenshot'), async (req, res) => {
   try {
+    console.log('=== PAYMENT REQUEST START ===');
+    console.log('User ID:', req.userId);
+    console.log('File received:', !!req.file);
+    console.log('Body keys:', Object.keys(req.body));
+    
     // Check for file first
     if (!req.file) {
-      console.error('No payment screenshot file provided');
+      console.error('❌ No payment screenshot file provided');
       return res.status(400).json({ message: 'Payment screenshot is required' });
     }
 
-    console.log('Payment screenshot uploaded:', req.file.filename || req.file.path);
+    console.log('✓ File uploaded:', req.file.filename || req.file.path);
 
     // Parse items and customerDetails from FormData
     let items = req.body.items;
+    console.log('Raw items:', items);
+    
     if (typeof items === 'string') {
       try {
         items = JSON.parse(items);
+        console.log('✓ Parsed items:', items.length, 'items');
       } catch (e) {
-        console.error('Error parsing items:', e.message);
-        return res.status(400).json({ message: 'Invalid items format' });
+        console.error('❌ Error parsing items:', e.message);
+        return res.status(400).json({ message: 'Invalid items format: ' + e.message });
       }
     }
 
     let customerDetails = req.body.customerDetails;
+    console.log('Raw customerDetails:', customerDetails);
+    
     if (typeof customerDetails === 'string') {
       try {
         customerDetails = JSON.parse(customerDetails);
+        console.log('✓ Parsed customerDetails:', customerDetails.name);
       } catch (e) {
-        console.error('Error parsing customerDetails:', e.message);
-        return res.status(400).json({ message: 'Invalid customer details format' });
+        console.error('❌ Error parsing customerDetails:', e.message);
+        return res.status(400).json({ message: 'Invalid customer details format: ' + e.message });
       }
     }
 
     const totalPrice = parseFloat(req.body.totalPrice);
     const paymentMethod = req.body.paymentMethod;
 
+    console.log('Total Price:', totalPrice, 'Payment Method:', paymentMethod);
+
     // Validate required fields
     if (!items || !Array.isArray(items) || items.length === 0) {
+      console.error('❌ Invalid items');
       return res.status(400).json({ message: 'At least one item is required' });
     }
     if (!customerDetails || !customerDetails.name || !customerDetails.email) {
+      console.error('❌ Invalid customer details');
       return res.status(400).json({ message: 'Customer details are required' });
     }
     if (!totalPrice || totalPrice <= 0) {
+      console.error('❌ Invalid total price:', totalPrice);
       return res.status(400).json({ message: 'Valid total price is required' });
     }
     if (!['upi_link', 'upi_qr'].includes(paymentMethod)) {
+      console.error('❌ Invalid payment method:', paymentMethod);
       return res.status(400).json({ message: 'Valid payment method is required' });
     }
 
+    console.log('✓ All validations passed');
+
     // Verify stock availability
     for (let item of items) {
+      console.log('Checking stock for product:', item.productId);
       const product = await Product.findById(item.productId);
       if (!product) {
+        console.error('❌ Product not found:', item.productId);
         return res.status(404).json({ message: `Product ${item.productId} not found` });
       }
       if (product.stock < item.quantity) {
+        console.error('❌ Insufficient stock for:', product.name);
         return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
       }
     }
+
+    console.log('✓ Stock verified');
 
     // Create order only after payment screenshot upload
     const order = new Order({
@@ -86,7 +110,7 @@ router.post('/payment-request', verifyToken, upload.single('screenshot'), async 
     });
 
     await order.save();
-    console.log('Order created with payment proof:', order._id);
+    console.log('✓ Order created with payment proof:', order._id);
 
     const orderDetails = {
       orderId: order._id,
@@ -102,6 +126,7 @@ router.post('/payment-request', verifyToken, upload.single('screenshot'), async 
     sendOrderConfirmationToCustomer(orderDetails)
       .catch(err => console.error('Customer email error:', err.message));
 
+    console.log('=== PAYMENT REQUEST SUCCESS ===');
     res.status(201).json({
       message: 'Order created successfully after payment proof upload',
       order,
@@ -112,7 +137,9 @@ router.post('/payment-request', verifyToken, upload.single('screenshot'), async 
       }
     });
   } catch (error) {
-    console.error('Error creating order with payment proof:', error);
+    console.error('=== PAYMENT REQUEST ERROR ===');
+    console.error('Error:', error);
+    console.error('Stack:', error.stack);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
