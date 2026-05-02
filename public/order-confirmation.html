@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Payment - Akkar General & Bangles Store</title>
+  <link rel="stylesheet" href="styles-modern.css">
+  <style>
+    .payment-flow {
+      display: flex;
+      gap: 1rem;
+      margin: 1.5rem 0;
+      flex-wrap: wrap;
+    }
+    .flow-step {
+      flex: 1;
+      min-width: 140px;
+      text-align: center;
+      padding: 1rem;
+      border-radius: 0.75rem;
+      background: #f1f5f9;
+      border: 2px solid #e2e8f0;
+      font-size: 0.85rem;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .flow-step.active {
+      background: #fff7ed;
+      border-color: #f97316;
+      color: #f97316;
+    }
+    .flow-step.done {
+      background: #f0fdf4;
+      border-color: #10b981;
+      color: #10b981;
+    }
+    .flow-step .step-icon { font-size: 1.5rem; display: block; margin-bottom: 0.3rem; }
+
+    .payment-box {
+      background: linear-gradient(135deg, #fff7ed, #ffedd5);
+      border: 2px solid #f97316;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      text-align: center;
+    }
+    .payment-box h3 { color: #ea580c; margin-bottom: 0.5rem; }
+
+    .upload-box {
+      background: #f8fafc;
+      border: 2px dashed #cbd5e1;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      text-align: center;
+      transition: border-color 0.3s;
+    }
+    .upload-box:hover { border-color: #f97316; }
+    .upload-box h3 { color: #0f172a; margin-bottom: 0.5rem; }
+    .upload-box p { color: #64748b; font-size: 0.9rem; margin-bottom: 1rem; }
+
+    .order-confirmed-banner {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      text-align: center;
+      margin: 1.5rem 0;
+    }
+    .order-confirmed-banner h2 { margin-bottom: 0.25rem; }
+
+    .pending-banner {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+      border-radius: 1rem;
+      padding: 1rem 1.5rem;
+      text-align: center;
+      margin: 1rem 0;
+      font-weight: 600;
+    }
+
+    .items-table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
+    .items-table th { background: #f1f5f9; padding: 0.6rem 0.75rem; text-align: left; font-size: 0.85rem; color: #64748b; }
+    .items-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+    .items-table tr:last-child td { border-bottom: none; }
+
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0.75rem 0; }
+    .detail-item { background: #f8fafc; padding: 0.6rem 0.75rem; border-radius: 0.5rem; font-size: 0.9rem; }
+    .detail-item strong { color: #64748b; font-size: 0.8rem; display: block; }
+
+    @media (max-width: 600px) {
+      .detail-grid { grid-template-columns: 1fr; }
+      .payment-flow { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="container">
+      <div class="nav-brand">
+        <h1><span class="brand-logo">AB</span> Akkar General & Bangles Store</h1>
+        <small style="display:block;color:rgba(255,255,255,0.75);font-size:0.75rem;letter-spacing:1px;margin-top:2px;">since 1986</small>
+      </div>
+      <div class="nav-menu">
+        <a href="/" class="nav-link">Home</a>
+        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <section class="confirmation-section">
+    <div class="container">
+      <div class="confirmation-card">
+
+        <!-- Progress Steps -->
+        <div class="payment-flow">
+          <div class="flow-step done">
+            <span class="step-icon">🛒</span>
+            Cart & Details
+          </div>
+          <div class="flow-step active" id="stepPay">
+            <span class="step-icon">💳</span>
+            Pay via UPI
+          </div>
+          <div class="flow-step" id="stepUpload">
+            <span class="step-icon">📸</span>
+            Upload Screenshot
+          </div>
+          <div class="flow-step" id="stepConfirm">
+            <span class="step-icon">✅</span>
+            Order Confirmed
+          </div>
+        </div>
+
+        <!-- Status Banner (shown after upload) -->
+        <div id="statusBanner" style="display:none;"></div>
+
+        <!-- Payment Section -->
+        <div id="paymentSection" class="payment-box">
+          <h3>💳 Step 1: Complete Your Payment</h3>
+          <p style="color:#92400e;margin-bottom:1rem;">Pay the amount below using UPI, then upload your payment screenshot to confirm the order.</p>
+
+          <div id="upiLinkSection">
+            <p style="font-size:1.1rem;font-weight:700;color:#ea580c;margin-bottom:1rem;">
+              Amount: ₹<span id="payAmount">0</span>
+            </p>
+            <a id="upiLink" href="#" class="btn btn-primary btn-large" style="display:inline-block;margin-bottom:0.75rem;">
+              📱 Pay via UPI App
+            </a>
+            <p style="font-size:0.85rem;color:#92400e;">UPI ID: <strong>9923554590@postbank</strong></p>
+          </div>
+
+          <div id="upiQrSection" style="display:none;">
+            <p style="font-size:1.1rem;font-weight:700;color:#ea580c;margin-bottom:0.75rem;">
+              Amount: ₹<span id="payAmountQr">0</span>
+            </p>
+            <div id="qrCode" class="qr-code" style="display:inline-block;background:white;padding:1rem;border-radius:0.75rem;margin-bottom:0.75rem;"></div>
+            <p style="font-size:0.85rem;color:#92400e;">Scan with any UPI app &bull; UPI ID: <strong>9923554590@postbank</strong></p>
+          </div>
+        </div>
+
+        <!-- Upload Screenshot Section -->
+        <div id="uploadSection" class="upload-box">
+          <h3>📸 Step 2: Upload Payment Screenshot</h3>
+          <p>After paying, upload your payment screenshot. Your order will be created only after this step.</p>
+          <form id="uploadProofForm" enctype="multipart/form-data">
+            <div class="form-group" style="max-width:400px;margin:0 auto 1rem;">
+              <input type="file" id="paymentScreenshot" accept="image/*" required
+                style="width:100%;padding:0.6rem;border:2px solid #e2e8f0;border-radius:0.5rem;">
+            </div>
+            <button type="submit" class="btn btn-primary btn-large">
+              ✅ Submit Payment Proof & Place Order
+            </button>
+            <p id="uploadProofMessage" class="success-message" style="margin-top:0.75rem;"></p>
+            <p id="uploadProofError" class="error-message" style="margin-top:0.75rem;"></p>
+          </form>
+        </div>
+
+        <!-- Order Summary -->
+        <div style="margin-top:1.5rem;">
+          <h3 style="margin-bottom:0.75rem;">🧾 Order Summary</h3>
+          <table class="items-table">
+            <thead>
+              <tr><th>Item</th><th>Qty</th><th>Price</th></tr>
+            </thead>
+            <tbody id="confirmationItems"></tbody>
+          </table>
+          <div style="text-align:right;padding:0.75rem;background:#fff7ed;border-radius:0.5rem;margin-top:0.5rem;">
+            <strong style="font-size:1.2rem;color:#f97316;">Total: ₹<span id="confirmationTotal">0</span></strong>
+          </div>
+        </div>
+
+        <!-- Delivery Details -->
+        <div style="margin-top:1.5rem;">
+          <h3 style="margin-bottom:0.75rem;">📦 Delivery Details</h3>
+          <div class="detail-grid">
+            <div class="detail-item"><strong>Name</strong><span id="confirmationName"></span></div>
+            <div class="detail-item"><strong>Email</strong><span id="confirmationEmail"></span></div>
+            <div class="detail-item"><strong>Phone</strong><span id="confirmationPhone"></span></div>
+            <div class="detail-item"><strong>Address</strong><span id="confirmationAddress"></span></div>
+          </div>
+        </div>
+
+        <!-- Order ID (shown after order is created) -->
+        <div id="orderIdSection" style="display:none;margin-top:1rem;padding:0.75rem;background:#f0fdf4;border-radius:0.5rem;text-align:center;">
+          <p style="color:#059669;font-weight:600;">Order ID: <span id="orderId"></span></p>
+        </div>
+
+        <div class="confirmation-actions" style="margin-top:1.5rem;">
+          <a href="/" class="btn btn-primary">Continue Shopping</a>
+          <button class="btn btn-secondary" onclick="downloadReceipt()">Download Receipt</button>
+        </div>
+
+        <!-- Payment Query -->
+        <div style="margin-top:2rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:1rem;padding:1.5rem;">
+          <h3 style="margin-bottom:0.5rem;">💬 Payment Query</h3>
+          <p style="color:#64748b;font-size:0.9rem;margin-bottom:1rem;">Having trouble with your payment? Send us a message and we'll reply within 24 hours.</p>
+          <form id="paymentQueryForm">
+            <div class="form-group">
+              <textarea id="queryMessage" rows="3" placeholder="Describe your payment issue..." required
+                style="width:100%;padding:0.75rem;border:2px solid #e2e8f0;border-radius:0.75rem;font-size:0.95rem;resize:vertical;box-sizing:border-box;"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">📤 Send Query</button>
+            <p id="querySuccess" style="color:#16a34a;font-weight:600;margin-top:0.5rem;display:none;">✓ Query sent! We'll reply to your email within 24 hours.</p>
+            <p id="queryError"   style="color:#dc2626;font-weight:600;margin-top:0.5rem;display:none;"></p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>&copy; 2024 Akkar General & Bangles Store. All rights reserved.</p>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="order-confirmation.js"></script>
+</body>
+</html>

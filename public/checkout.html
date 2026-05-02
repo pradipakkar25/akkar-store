@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout - Akkar General & Bangles Store</title>
+  <link rel="stylesheet" href="styles-modern.css">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="container">
+      <div class="nav-brand">
+        <h1><span class="brand-logo">AB</span> Akkar General & Bangles Store</h1>
+        <small style="display:block;color:rgba(255,255,255,0.75);font-size:0.75rem;letter-spacing:1px;margin-top:2px;">since 1986</small>
+      </div>
+      <div class="nav-menu">
+        <a href="/" class="nav-link">Home</a>
+        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Checkout Section -->
+  <section class="checkout-section">
+    <div class="container">
+      <div class="checkout-wrapper">
+        <!-- Order Summary -->
+        <div class="checkout-summary">
+          <h2>Order Summary</h2>
+          <div id="orderItems" class="order-items">
+            <!-- Items will be loaded here -->
+          </div>
+          <div id="pricingBreakdown" style="margin-top:1rem;border-top:2px solid #e2e8f0;padding-top:1rem;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem;color:#64748b;">
+              <span>Subtotal (MRP)</span>
+              <span>₹<span id="mrpTotal">0</span></span>
+            </div>
+            <div id="discountRow" style="display:none;justify-content:space-between;margin-bottom:0.4rem;color:#16a34a;font-weight:600;">
+              <span>🏷️ Discount</span>
+              <span>− ₹<span id="discountAmount">0</span></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:0.5rem;padding-top:0.5rem;border-top:1px dashed #e2e8f0;">
+              <strong style="font-size:1.1rem;">You Pay</strong>
+              <strong style="font-size:1.2rem;color:#f97316;">₹<span id="orderTotal">0</span></strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Checkout Form -->
+        <div class="checkout-form">
+          <h2>Delivery Details</h2>
+          <form id="checkoutForm">
+            <div class="form-group">
+              <label>Full Name *</label>
+              <input type="text" id="customerName" required>
+            </div>
+
+            <div class="form-group">
+              <label>Email *</label>
+              <input type="email" id="customerEmail" required>
+            </div>
+
+            <div class="form-group">
+              <label>Phone Number *</label>
+              <input type="tel" id="customerPhone" required>
+            </div>
+
+            <div class="form-group">
+              <label>Delivery Address *</label>
+              <textarea id="customerAddress" rows="4" required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Payment Method *</label>
+              <div class="payment-options">
+                <label class="radio-label">
+                  <input type="radio" name="paymentMethod" value="upi_link" checked>
+                  UPI Payment Link (prakash.akkar@ybl)
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="paymentMethod" value="upi_qr">
+                  UPI QR Code Scanner (prakash.akkar@ybl)
+                </label>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-large">
+              Place Order
+            </button>
+            <p id="checkoutError" class="error-message"></p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>&copy; 2024 Akkar General & Bangles Store. All rights reserved.</p>
+  </footer>
+
+  <script src="checkout.js"></script>
+</body>
+</html>

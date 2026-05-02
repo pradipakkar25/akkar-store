@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # MongoDB Service
+  mongodb:
+    image: mongo:5.0
+    container_name: akkar-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: akkar-general-store
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - akkar-network
+
+  # Node.js Application Service
+  app:
+    build: .
+    container_name: akkar-app
+    ports:
+      - "5000:5000"
+    environment:
+      MONGODB_URI: mongodb://admin:password@mongodb:27017/akkar-general-store
+      JWT_SECRET: akkar_general_store_jwt_secret_key_2024
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      ADMIN_EMAIL: admin@akkarstore.com
+      PORT: 5000
+      NODE_ENV: production
+    depends_on:
+      - mongodb
+    networks:
+      - akkar-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+
+networks:
+  akkar-network:
+    driver: bridge
