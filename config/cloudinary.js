@@ -30,25 +30,40 @@ if (useCloudinary) {
 }
 
 // ─── Product image upload ────────────────────────────────────────────────────
-const productStorage = useCloudinary && cloudinary.config().cloud_name
-  ? new CloudinaryStorage({
-      cloudinary,
-      params: {
-        folder:         'akkar-store/products',
-        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-        transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto' }]
-      }
-    })
-  : multer.diskStorage({
-      destination: (req, file, cb) => {
-        const dir = path.join(__dirname, '../public/uploads');
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        cb(null, dir);
-      },
-      filename: (req, file, cb) => {
-        cb(null, 'product-' + Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname));
-      }
-    });
+let productStorage;
+try {
+  productStorage = useCloudinary
+    ? new CloudinaryStorage({
+        cloudinary,
+        params: {
+          folder:         'akkar-store/products',
+          allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+          transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto' }]
+        }
+      })
+    : multer.diskStorage({
+        destination: (req, file, cb) => {
+          const dir = path.join(__dirname, '../public/uploads');
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          cb(null, dir);
+        },
+        filename: (req, file, cb) => {
+          cb(null, 'product-' + Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname));
+        }
+      });
+} catch (err) {
+  console.error('Error creating product storage:', err.message);
+  productStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = path.join(__dirname, '../public/uploads');
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      cb(null, 'product-' + Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname));
+    }
+  });
+}
 
 const uploadProduct = multer({
   storage: productStorage,
@@ -59,25 +74,40 @@ const uploadProduct = multer({
 });
 
 // ─── Banner image upload ─────────────────────────────────────────────────────
-const bannerStorage = useCloudinary && cloudinary.config().cloud_name
-  ? new CloudinaryStorage({
-      cloudinary,
-      params: {
-        folder:         'akkar-store/banners',
-        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-        transformation: [{ width: 400, height: 400, crop: 'limit', quality: 'auto' }]
-      }
-    })
-  : multer.diskStorage({
-      destination: (req, file, cb) => {
-        const dir = path.join(__dirname, '../public/uploads/banners');
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        cb(null, dir);
-      },
-      filename: (req, file, cb) => {
-        cb(null, 'banner-' + Date.now() + path.extname(file.originalname));
-      }
-    });
+let bannerStorage;
+try {
+  bannerStorage = useCloudinary
+    ? new CloudinaryStorage({
+        cloudinary,
+        params: {
+          folder:         'akkar-store/banners',
+          allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+          transformation: [{ width: 400, height: 400, crop: 'limit', quality: 'auto' }]
+        }
+      })
+    : multer.diskStorage({
+        destination: (req, file, cb) => {
+          const dir = path.join(__dirname, '../public/uploads/banners');
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          cb(null, dir);
+        },
+        filename: (req, file, cb) => {
+          cb(null, 'banner-' + Date.now() + path.extname(file.originalname));
+        }
+      });
+} catch (err) {
+  console.error('Error creating banner storage:', err.message);
+  bannerStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = path.join(__dirname, '../public/uploads/banners');
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      cb(null, 'banner-' + Date.now() + path.extname(file.originalname));
+    }
+  });
+}
 
 const uploadBanner = multer({
   storage: bannerStorage,
@@ -88,26 +118,42 @@ const uploadBanner = multer({
 });
 
 // ─── Payment proof upload — Cloudinary in production, local in dev ───────────
-const paymentStorage = useCloudinary && cloudinary.config().cloud_name
-  ? new CloudinaryStorage({
-      cloudinary,
-      params: {
-        folder:          'akkar-store/payment-proofs',
-        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'],
-        resource_type:   'auto'
-      }
-    })
-  : multer.diskStorage({
-      destination: (req, file, cb) => {
-        const dir = path.join(__dirname, '../public/uploads/payment-proofs');
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        cb(null, dir);
-      },
-      filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname) || '.png';
-        cb(null, `payment-proof-${req.params?.id || 'new'}-${Date.now()}${ext}`);
-      }
-    });
+let paymentStorage;
+try {
+  paymentStorage = useCloudinary
+    ? new CloudinaryStorage({
+        cloudinary,
+        params: {
+          folder:          'akkar-store/payment-proofs',
+          allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'],
+          resource_type:   'auto'
+        }
+      })
+    : multer.diskStorage({
+        destination: (req, file, cb) => {
+          const dir = path.join(__dirname, '../public/uploads/payment-proofs');
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          cb(null, dir);
+        },
+        filename: (req, file, cb) => {
+          const ext = path.extname(file.originalname) || '.png';
+          cb(null, `payment-proof-${req.params?.id || 'new'}-${Date.now()}${ext}`);
+        }
+      });
+} catch (err) {
+  console.error('Error creating payment storage:', err.message);
+  paymentStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = path.join(__dirname, '../public/uploads/payment-proofs');
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname) || '.png';
+      cb(null, `payment-proof-${req.params?.id || 'new'}-${Date.now()}${ext}`);
+    }
+  });
+}
 
 const uploadPayment = multer({
   storage: paymentStorage,
