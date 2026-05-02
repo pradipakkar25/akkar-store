@@ -1,30 +1,74 @@
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const STORE_URL = process.env.STORE_URL || 'http://localhost:5000';
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD
-  }
-});
-
-// ─── Shared email wrapper ────────────────────────────────────────────────────
+// ─── Shared email wrapper ─────────────────────────────────────────────────────
+// Uses Resend if RESEND_API_KEY is set (Railway/production)
+// Falls back to Gmail SMTP if EMAIL_USER + EMAIL_PASSWORD are set (localhost)
 const sendMail = async ({ to, subject, html }) => {
-  try {
-    await transporter.sendMail({
-      from: `"Akkar General & Bangles Store" <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
-      html
-    });
-    console.log(`✓ Email sent → ${to} | ${subject}`);
-    return true;
-  } catch (err) {
-    console.error('✗ Email error:', err.message);
-    return false;
+
+  // ── Option 1: Resend (works on Railway, no SMTP blocking) ──
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const { error } = await resend.emails.send({
+        from: 'Akkar General & Bangles Store <onboarding@resend.dev>',
+        to,
+        subject,
+        html
+      });
+      if (error) {
+        console.error(`✗ Resend failed → ${to} | ${error.message}`);
+        return false;
+      }
+      console.log(`✓ Email sent (Resend) → ${to} | ${subject}`);
+      return true;
+    } catch (err) {
+      console.error(`✗ Resend error → ${to} | ${err.message}`);
+      return false;
+    }
   }
+
+  // ── Option 2: Gmail SMTP (localhost development) ──
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASSWORD
+        },
+        connectionTimeout: 5000,
+        socketTimeout: 5000
+      });
+
+      // Send with timeout
+      const sendPromise = transporter.sendMail({
+        from: `"Akkar General & Bangles Store" <${process.env.EMAIL_USER}>`,
+        to,
+        subject,
+        html
+      });
+
+      // Set a 10 second timeout
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Email send timeout')), 10000)
+      );
+
+      await Promise.race([sendPromise, timeoutPromise]);
+      console.log(`✓ Email sent (Gmail) → ${to} | ${subject}`);
+      return true;
+    } catch (err) {
+      console.error(`✗ Gmail failed → ${to} | ${err.message}`);
+      // Don't throw - just log and return false
+      return false;
+    }
+  }
+
+  // ── No email configured ──
+  console.warn(`⚠️  Email skipped → ${to} | No email service configured`);
+  return false;
 };
 
 // ─── Shared HTML shell ───────────────────────────────────────────────────────
@@ -46,11 +90,6 @@ const shell = (bodyContent) => `
     th { background:#fff7ed; color:#ea580c; padding:10px 12px; text-align:left; font-size:0.85rem; }
     td { padding:10px 12px; border-bottom:1px solid #f1f5f9; font-size:0.9rem; color:#374151; }
     .total-row td { font-weight:700; color:#f97316; font-size:1rem; border-bottom:none; }
-    .badge { display:inline-block; padding:4px 12px; border-radius:999px; font-size:0.8rem; font-weight:700; }
-    .badge-orange { background:#fff7ed; color:#ea580c; }
-    .badge-green  { background:#f0fdf4; color:#16a34a; }
-    .badge-blue   { background:#eff6ff; color:#2563eb; }
-    .badge-red    { background:#fef2f2; color:#dc2626; }
     .btn { display:inline-block; background:linear-gradient(135deg,#f97316,#ea580c); color:#fff !important; padding:12px 28px; border-radius:8px; text-decoration:none; font-weight:700; font-size:0.95rem; margin:8px 0; }
     .info-box { background:#fff7ed; border-left:4px solid #f97316; border-radius:0 8px 8px 0; padding:14px 16px; margin:16px 0; }
     .info-box p { margin:0; color:#92400e; font-size:0.9rem; }
@@ -67,7 +106,7 @@ const shell = (bodyContent) => `
     <div class="body">${bodyContent}</div>
     <div class="footer">
       &copy; ${new Date().getFullYear()} Akkar General &amp; Bangles Store &bull; All rights reserved<br>
-      Questions? Reply to this email or contact us at ${process.env.EMAIL_USER}
+      Questions? Reply to this email or contact us at akkargeneralstore@gmail.com
     </div>
   </div>
 </body>
@@ -123,8 +162,8 @@ const sendWelcomeEmail = async ({ name, email }) => {
 // 2. ORDER CONFIRMATION — sent to customer after payment screenshot upload
 // ═══════════════════════════════════════════════════════════════════════════════
 const sendOrderConfirmationToCustomer = async ({ orderId, items, customerDetails, totalPrice, paymentMethod }) => {
-  const upiId = '9923554590@postbank';
-  const payLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=Akkar%20General%20%26%20Bangles%20Store&am=${totalPrice}&tn=Order%20${orderId}`;
+  const upiId = 'prakash.akkar@ybl';
+  const payLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=Akkar%20General%20%26%20Bangles%20Store&am=${totalPrice}&cu=INR&tn=Order%20${orderId}`;
 
   return sendMail({
     to: customerDetails.email,
@@ -132,29 +171,21 @@ const sendOrderConfirmationToCustomer = async ({ orderId, items, customerDetails
     html: shell(`
       <h2>Your order is received! ✅</h2>
       <p>Hi <strong>${customerDetails.name}</strong>, thank you for shopping with us. We've received your payment screenshot and will verify it shortly.</p>
-
       <div class="info-box">
         <p><strong>Order ID:</strong> ${orderId}<br>
         <strong>Payment Method:</strong> ${paymentMethod === 'upi_link' ? 'UPI Link' : 'UPI QR Code'}<br>
         <strong>UPI ID:</strong> ${upiId}</p>
       </div>
-
       ${itemsTable(items)}
-
       <table>
         <tr class="total-row"><td>Amount to Pay</td><td>₹${totalPrice}</td></tr>
       </table>
-
       <p style="text-align:center;">
         <a href="${payLink}" class="btn">💳 Pay ₹${totalPrice} via UPI</a>
       </p>
-
       <hr class="divider">
       <h2>Delivery Details</h2>
-      <p>
-        📍 <strong>${customerDetails.address}</strong><br>
-        📞 ${customerDetails.phone}
-      </p>
+      <p>📍 <strong>${customerDetails.address}</strong><br>📞 ${customerDetails.phone}</p>
       <p style="color:#94a3b8;font-size:0.85rem;">We'll send you another email once your payment is verified and your order is dispatched.</p>
     `)
   });
@@ -191,11 +222,11 @@ const sendOrderEmailToAdmin = async ({ orderId, items, customerDetails, totalPri
 // 4. DELIVERY STATUS UPDATE — sent to customer when admin changes order status
 // ═══════════════════════════════════════════════════════════════════════════════
 const STATUS_INFO = {
-  processing: { emoji: '⚙️', label: 'Processing',  color: '#2563eb', msg: 'Your order is being prepared and will be dispatched soon.' },
-  shipped:    { emoji: '🚚', label: 'Shipped',      color: '#7c3aed', msg: 'Your order is on its way! Expect delivery within 1–3 days.' },
-  delivered:  { emoji: '✅', label: 'Delivered',    color: '#16a34a', msg: 'Your order has been delivered. We hope you love it!' },
-  cancelled:  { emoji: '❌', label: 'Cancelled',    color: '#dc2626', msg: 'Your order has been cancelled. Contact us if this was a mistake.' },
-  pending:    { emoji: '⏳', label: 'Pending',      color: '#d97706', msg: 'Your order is pending confirmation.' }
+  processing: { emoji: '⚙️', label: 'Processing', color: '#2563eb', msg: 'Your order is being prepared and will be dispatched soon.' },
+  shipped:    { emoji: '🚚', label: 'Shipped',     color: '#7c3aed', msg: 'Your order is on its way! Expect delivery within 1–3 days.' },
+  delivered:  { emoji: '✅', label: 'Delivered',   color: '#16a34a', msg: 'Your order has been delivered. We hope you love it!' },
+  cancelled:  { emoji: '❌', label: 'Cancelled',   color: '#dc2626', msg: 'Your order has been cancelled. Contact us if this was a mistake.' },
+  pending:    { emoji: '⏳', label: 'Pending',     color: '#d97706', msg: 'Your order is pending confirmation.' }
 };
 
 const sendOrderStatusEmail = async ({ orderId, customerEmail, customerName, orderStatus, items, totalPrice }) => {
@@ -209,7 +240,7 @@ const sendOrderStatusEmail = async ({ orderId, customerEmail, customerName, orde
       <p>${info.msg}</p>
       <div class="info-box">
         <p><strong>Order ID:</strong> ${orderId}<br>
-        <strong>Status:</strong> <span class="badge" style="background:${info.color}20;color:${info.color};">${info.label}</span></p>
+        <strong>Status:</strong> <span style="background:${info.color}20;color:${info.color};padding:2px 10px;border-radius:999px;font-weight:700;">${info.label}</span></p>
       </div>
       ${itemsTable(items)}
       <table>
@@ -218,7 +249,6 @@ const sendOrderStatusEmail = async ({ orderId, customerEmail, customerName, orde
       ${orderStatus === 'delivered' ? `
         <div style="background:#f0fdf4;border-radius:8px;padding:16px;text-align:center;margin-top:16px;">
           <p style="color:#16a34a;font-weight:700;margin:0;">🙏 Thank you for shopping with us!</p>
-          <p style="color:#475569;margin:8px 0 0;font-size:0.9rem;">We'd love to see you again.</p>
           <a href="${STORE_URL}" class="btn" style="margin-top:12px;">Shop Again →</a>
         </div>` : ''}
     `)
@@ -263,7 +293,6 @@ const sendOfferBroadcast = async ({ recipients, offerTitle, offerBody, offerImag
 // 6. PAYMENT QUERY — customer sends a payment issue to admin
 // ═══════════════════════════════════════════════════════════════════════════════
 const sendPaymentQuery = async ({ customerName, customerEmail, orderId, queryMessage }) => {
-  // Email to admin
   await sendMail({
     to: process.env.ADMIN_EMAIL,
     subject: `💬 Payment Query — ${customerName} | Order ${orderId}`,
@@ -281,7 +310,6 @@ const sendPaymentQuery = async ({ customerName, customerEmail, orderId, queryMes
     `)
   });
 
-  // Acknowledgement to customer
   return sendMail({
     to: customerEmail,
     subject: `✅ We received your payment query — Akkar Store`,

@@ -43,9 +43,14 @@ router.post('/', verifyToken, isAdmin, upload.single('image'), [
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    console.error('Validation errors:', errors.array());
     // Delete uploaded file if validation fails
     if (req.file) {
-      fs.unlinkSync(req.file.path);
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (e) {
+        console.error('Error deleting file:', e.message);
+      }
     }
     return res.status(400).json({ errors: errors.array() });
   }
@@ -56,10 +61,13 @@ router.post('/', verifyToken, isAdmin, upload.single('image'), [
     const discountPercent = req.body.discountPercent  ? parseFloat(req.body.discountPercent)  : 0;
     const offerLabel      = req.body.offerLabel       || '';
 
+    console.log('Adding product:', { name, price, category, stock, hasFile: !!req.file });
+
     // Use uploaded image or fallback to provided URL or default
     let image = req.body.image;
     if (req.file) {
       image = getFileUrl(req.file, '/uploads/');
+      console.log('Image URL from upload:', image);
     }
     if (!image) {
       image = '/uploads/placeholder.svg';
@@ -78,11 +86,17 @@ router.post('/', verifyToken, isAdmin, upload.single('image'), [
     });
 
     await product.save();
+    console.log('Product saved successfully:', product._id);
     res.status(201).json({ message: 'Product added successfully', product });
   } catch (error) {
+    console.error('Error adding product:', error);
     // Delete uploaded file if save fails
     if (req.file) {
-      fs.unlinkSync(req.file.path);
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (e) {
+        console.error('Error deleting file:', e.message);
+      }
     }
     res.status(500).json({ message: 'Server error', error: error.message });
   }

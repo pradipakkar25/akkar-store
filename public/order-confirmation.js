@@ -1,5 +1,5 @@
 const API_URL = '/api';
-const UPI_ID = '9923554590@postbank';
+const UPI_ID = 'prakash.akkar@ybl';
 const STORE_NAME = 'AB%20Stores';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -49,13 +49,16 @@ function renderPendingPayment(data) {
   // Payment section — use discounted total for UPI amount
   document.getElementById('payAmount').textContent   = total;
   document.getElementById('payAmountQr').textContent = total;
+  const qr2 = document.getElementById('payAmountQr2');
+  if (qr2) qr2.textContent = total;
 
-  // UPI link encodes the exact discounted amount customer must pay
-  const upiLink = `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${STORE_NAME}&am=${total}&tn=Order%20Payment`;
+  // UPI link with exact amount pre-filled — works for both link and QR
+  const upiLink = `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${STORE_NAME}&am=${total}&cu=INR&tn=Order%20Payment`;
 
   if (data.paymentMethod === 'upi_qr') {
     document.getElementById('upiLinkSection').style.display = 'none';
     document.getElementById('upiQrSection').style.display   = 'block';
+    // Generate QR with amount pre-filled — customer scans and amount is automatic
     generateQRCode(upiLink);
   } else {
     document.getElementById('upiLinkSection').style.display = 'block';
@@ -199,9 +202,12 @@ function generateQRCode(upiLink) {
   const div = document.getElementById('qrCode');
   div.innerHTML = '';
   new QRCode(div, {
-    text: upiLink, width: 200, height: 200,
-    colorDark: '#000000', colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.H
+    text: upiLink,
+    width: 240,
+    height: 240,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
   });
 }
 

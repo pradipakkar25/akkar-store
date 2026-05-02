@@ -1,5 +1,4 @@
 const express = require('express');
-const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const { body, validationResult } = require('express-validator');
@@ -7,29 +6,11 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { verifyToken, isAdmin } = require('../middleware/auth');
 const { sendOrderEmailToAdmin, sendOrderConfirmationToCustomer, sendOrderStatusEmail } = require('../services/emailService');
+const { uploadPayment, getFileUrl } = require('../config/cloudinary');
 const router = express.Router();
 
-// Configure multer for payment screenshot uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../public/uploads/payment-proofs');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const timestamp = Date.now();
-    const identifier = req.params.id || 'new';
-    const ext = path.extname(file.originalname) || '.png';
-    cb(null, `payment-proof-${identifier}-${timestamp}${ext}`);
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }
-});
+// Use unified uploader — Cloudinary in production, local disk in dev
+const upload = uploadPayment;
 
 // Create order after payment screenshot upload (user)
 router.post('/payment-request', verifyToken, upload.single('screenshot'), [
@@ -40,13 +21,17 @@ router.post('/payment-request', verifyToken, upload.single('screenshot'), [
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    console.error('Payment request validation errors:', errors.array());
     return res.status(400).json({ errors: errors.array() });
   }
 
   try {
     if (!req.file) {
+      console.error('No payment screenshot file provided');
       return res.status(400).json({ message: 'Payment screenshot is required' });
     }
+
+    console.log('Payment screenshot uploaded:', req.file.filename || req.file.path);
 
     let items = req.body.items;
     if (typeof items === 'string') {
@@ -84,11 +69,12 @@ router.post('/payment-request', verifyToken, upload.single('screenshot'), [
       paymentMethod,
       paymentStatus: 'pending',
       paymentVerificationStatus: 'pending',
-      paymentScreenshot: `/uploads/payment-proofs/${req.file.filename}`,
+      paymentScreenshot: getFileUrl(req.file, '/uploads/payment-proofs/'),
       orderStatus: 'pending'
     });
 
     await order.save();
+    console.log('Order created with payment proof:', order._id);
 
     const orderDetails = {
       orderId: order._id,
@@ -98,8 +84,11 @@ router.post('/payment-request', verifyToken, upload.single('screenshot'), [
       totalPrice
     };
 
-    await sendOrderEmailToAdmin(orderDetails);
-    await sendOrderConfirmationToCustomer(orderDetails);
+    // Send emails non-blocking — won't crash if email fails
+    sendOrderEmailToAdmin(orderDetails)
+      .catch(err => console.error('Admin email error:', err.message));
+    sendOrderConfirmationToCustomer(orderDetails)
+      .catch(err => console.error('Customer email error:', err.message));
 
     res.status(201).json({
       message: 'Order created successfully after payment proof upload',
@@ -111,6 +100,7 @@ router.post('/payment-request', verifyToken, upload.single('screenshot'), [
       }
     });
   } catch (error) {
+    console.error('Error creating order with payment proof:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -157,7 +147,7 @@ router.post('/', verifyToken, [
 
     await order.save();
 
-    // Send emails
+    // Send emails non-blocking — won't crash if email fails
     const orderDetails = {
       orderId: order._id,
       items,
@@ -165,8 +155,10 @@ router.post('/', verifyToken, [
       totalPrice
     };
 
-    await sendOrderEmailToAdmin(orderDetails);
-    await sendOrderConfirmationToCustomer(orderDetails);
+    sendOrderEmailToAdmin(orderDetails)
+      .catch(err => console.error('Admin email error:', err.message));
+    sendOrderConfirmationToCustomer(orderDetails)
+      .catch(err => console.error('Customer email error:', err.message));
 
     res.status(201).json({
       message: 'Order created successfully',
@@ -243,19 +235,25 @@ router.post('/:id/upload-proof', verifyToken, upload.single('screenshot'), async
     }
 
     if (!req.file) {
+      console.error('No screenshot file provided for order:', req.params.id);
       return res.status(400).json({ message: 'Payment screenshot is required' });
     }
 
-    order.paymentScreenshot = `/uploads/payment-proofs/${req.file.filename}`;
+    console.log('Payment proof uploaded for order:', req.params.id, 'File:', req.file.filename || req.file.path);
+
+    order.paymentScreenshot = getFileUrl(req.file, '/uploads/payment-proofs/');
     order.paymentVerificationStatus = 'pending';
     order.paymentStatus = 'pending';
     await order.save();
+
+    console.log('Order updated with payment proof:', order._id);
 
     res.json({
       message: 'Payment screenshot uploaded successfully. Awaiting admin verification.',
       order
     });
   } catch (error) {
+    console.error('Error uploading payment proof:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

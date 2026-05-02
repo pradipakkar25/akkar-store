@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Circle border -->
+  <circle cx="50" cy="50" r="47" fill="white" stroke="#3d4045" stroke-width="5"/>
+  
+  <!-- Letter A -->
+  <polygon points="18,72 38,28 48,28 35,72" fill="#3d4045"/>
+  <polygon points="38,28 58,28 52,44 42,44" fill="#3d4045"/>
+  <!-- Orange triangle inside A -->
+  <polygon points="38,58 48,38 58,58" fill="#e85d1a"/>
+  <!-- A right leg -->
+  <polygon points="48,28 58,28 68,72 55,72" fill="#3d4045"/>
+  
+  <!-- Letter B -->
+  <rect x="55" y="28" width="8" height="44" fill="#3d4045"/>
+  <!-- B top bump -->
+  <path d="M63,28 Q82,28 82,38 Q82,48 63,48" fill="none" stroke="#3d4045" stroke-width="8"/>
+  <!-- B bottom bump -->
+  <path d="M63,48 Q84,48 84,60 Q84,72 63,72" fill="none" stroke="#3d4045" stroke-width="8"/>
+</svg>

@@ -7,6 +7,7 @@ const fs = require('fs');
 // If Cloudinary env vars are set, use cloud storage
 // Otherwise fall back to local disk storage (for local dev without Cloudinary)
 const useCloudinary = !!(
+  !process.env.DISABLE_CLOUDINARY &&
   process.env.CLOUDINARY_CLOUD_NAME &&
   process.env.CLOUDINARY_API_KEY &&
   process.env.CLOUDINARY_API_SECRET
@@ -78,18 +79,27 @@ const uploadBanner = multer({
   }
 });
 
-// ─── Payment proof upload (always local — not needed in cloud) ───────────────
-const paymentStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../public/uploads/payment-proofs');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.png';
-    cb(null, `payment-proof-${req.params.id || 'new'}-${Date.now()}${ext}`);
-  }
-});
+// ─── Payment proof upload — Cloudinary in production, local in dev ───────────
+const paymentStorage = useCloudinary
+  ? new CloudinaryStorage({
+      cloudinary,
+      params: {
+        folder:          'akkar-store/payment-proofs',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'],
+        resource_type:   'auto'
+      }
+    })
+  : multer.diskStorage({
+      destination: (req, file, cb) => {
+        const dir = path.join(__dirname, '../public/uploads/payment-proofs');
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+      },
+      filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname) || '.png';
+        cb(null, `payment-proof-${req.params?.id || 'new'}-${Date.now()}${ext}`);
+      }
+    });
 
 const uploadPayment = multer({
   storage: paymentStorage,

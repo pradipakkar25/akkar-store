@@ -30,8 +30,10 @@ router.post('/register', [
     user = new User({ name, email, password, isAdmin: false });
     await user.save();
 
-    // Send welcome email (non-blocking)
-    sendWelcomeEmail({ name, email }).catch(() => {});
+    // Send welcome email — non-blocking, won't affect signup if email fails
+    sendWelcomeEmail({ name, email })
+      .then(ok => { if (!ok) console.warn('Welcome email not sent to:', email); })
+      .catch(err => console.error('Welcome email error:', err.message));
 
     // Generate JWT token
     const token = jwt.sign(
