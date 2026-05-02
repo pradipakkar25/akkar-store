@@ -13,19 +13,9 @@ const router = express.Router();
 const upload = uploadPayment;
 
 // Create order after payment screenshot upload (user)
-router.post('/payment-request', verifyToken, upload.single('screenshot'), [
-  body('items').notEmpty().withMessage('At least one item is required'),
-  body('customerDetails').notEmpty().withMessage('Customer details are required'),
-  body('totalPrice').isFloat({ min: 0 }).withMessage('Valid total price is required'),
-  body('paymentMethod').isIn(['upi_link', 'upi_qr']).withMessage('Valid payment method is required')
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    console.error('Payment request validation errors:', errors.array());
-    return res.status(400).json({ errors: errors.array() });
-  }
-
+router.post('/payment-request', verifyToken, upload.single('screenshot'), async (req, res) => {
   try {
+    // Check for file first
     if (!req.file) {
       console.error('No payment screenshot file provided');
       return res.status(400).json({ message: 'Payment screenshot is required' });
@@ -33,18 +23,42 @@ router.post('/payment-request', verifyToken, upload.single('screenshot'), [
 
     console.log('Payment screenshot uploaded:', req.file.filename || req.file.path);
 
+    // Parse items and customerDetails from FormData
     let items = req.body.items;
     if (typeof items === 'string') {
-      items = JSON.parse(items);
+      try {
+        items = JSON.parse(items);
+      } catch (e) {
+        console.error('Error parsing items:', e.message);
+        return res.status(400).json({ message: 'Invalid items format' });
+      }
     }
 
     let customerDetails = req.body.customerDetails;
     if (typeof customerDetails === 'string') {
-      customerDetails = JSON.parse(customerDetails);
+      try {
+        customerDetails = JSON.parse(customerDetails);
+      } catch (e) {
+        console.error('Error parsing customerDetails:', e.message);
+        return res.status(400).json({ message: 'Invalid customer details format' });
+      }
     }
 
-    if (!Array.isArray(items) || items.length === 0) {
+    const totalPrice = parseFloat(req.body.totalPrice);
+    const paymentMethod = req.body.paymentMethod;
+
+    // Validate required fields
+    if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'At least one item is required' });
+    }
+    if (!customerDetails || !customerDetails.name || !customerDetails.email) {
+      return res.status(400).json({ message: 'Customer details are required' });
+    }
+    if (!totalPrice || totalPrice <= 0) {
+      return res.status(400).json({ message: 'Valid total price is required' });
+    }
+    if (!['upi_link', 'upi_qr'].includes(paymentMethod)) {
+      return res.status(400).json({ message: 'Valid payment method is required' });
     }
 
     // Verify stock availability
@@ -57,8 +71,6 @@ router.post('/payment-request', verifyToken, upload.single('screenshot'), [
         return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
       }
     }
-
-    const { totalPrice, paymentMethod } = req.body;
 
     // Create order only after payment screenshot upload
     const order = new Order({
