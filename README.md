@@ -283,3 +283,4 @@ For issues or questions, please contact: support@akkarstore.com
 ---
 
 **Akkar General Store** - Your one-stop shop for quality products!
+# akkar-store
