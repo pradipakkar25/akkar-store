@@ -63,7 +63,17 @@ function renderPendingPayment(data) {
   } else {
     document.getElementById('upiLinkSection').style.display = 'block';
     document.getElementById('upiQrSection').style.display   = 'none';
-    document.getElementById('upiLink').href = upiLink;
+    const upiLinkBtn = document.getElementById('upiLink');
+    upiLinkBtn.href = upiLink;
+    upiLinkBtn.onclick = (e) => {
+      // Try to open UPI link, but don't fail if no handler
+      const result = window.location.href = upiLink;
+      setTimeout(() => {
+        // If still on this page after 1 second, UPI app wasn't found
+        console.log('UPI app may not be installed. Please use QR code or copy UPI ID manually.');
+      }, 1000);
+      return false;
+    };
   }
 
   document.getElementById('stepPay').classList.add('active');
