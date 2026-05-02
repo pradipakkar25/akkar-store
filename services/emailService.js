@@ -39,8 +39,8 @@ const sendMail = async ({ to, subject, html }) => {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASSWORD
         },
-        connectionTimeout: 5000,
-        socketTimeout: 5000
+        connectionTimeout: 3000,
+        socketTimeout: 3000
       });
 
       // Send with timeout
@@ -51,16 +51,16 @@ const sendMail = async ({ to, subject, html }) => {
         html
       });
 
-      // Set a 10 second timeout
+      // Set a 5 second timeout
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Email send timeout')), 10000)
+        setTimeout(() => reject(new Error('Email send timeout')), 5000)
       );
 
       await Promise.race([sendPromise, timeoutPromise]);
       console.log(`✓ Email sent (Gmail) → ${to} | ${subject}`);
       return true;
     } catch (err) {
-      console.error(`✗ Gmail failed → ${to} | ${err.message}`);
+      console.warn(`⚠️  Email skipped (timeout/error) → ${to} | ${err.message}`);
       // Don't throw - just log and return false
       return false;
     }
