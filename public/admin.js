@@ -99,7 +99,7 @@ async function loadDashboard() {
     document.getElementById('pendingOrders').textContent = orders.filter(o => o.orderStatus === 'pending').length;
 
     const totalSales = orders
-      .filter(o => o.paymentStatus === 'completed' && o.orderStatus !== 'cancelled')
+      .filter(o => o.orderStatus !== 'cancelled')
       .reduce((sum, o) => sum + o.totalPrice, 0);
     document.getElementById('totalSales').textContent = `₹${totalSales}`;
 
