@@ -8,8 +8,8 @@ const STORE_URL = process.env.STORE_URL || 'http://localhost:5000';
 // Falls back to Gmail SMTP if EMAIL_USER + EMAIL_PASSWORD are set (localhost)
 const sendMail = async ({ to, subject, html }) => {
 
-  // ── Option 1: Gmail SMTP (localhost development + Railway fallback) ──
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+  // ── Option 1: Gmail SMTP (localhost development only) ──
+  if (process.env.NODE_ENV === 'development' && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
     try {
       const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -21,7 +21,6 @@ const sendMail = async ({ to, subject, html }) => {
         socketTimeout: 5000
       });
 
-      // Send with timeout
       const sendPromise = transporter.sendMail({
         from: `"Akkar General & Bangles Store" <${process.env.EMAIL_USER}>`,
         to,
@@ -29,7 +28,6 @@ const sendMail = async ({ to, subject, html }) => {
         html
       });
 
-      // Set a 10 second timeout
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Email send timeout')), 10000)
       );
@@ -39,12 +37,12 @@ const sendMail = async ({ to, subject, html }) => {
       return true;
     } catch (err) {
       console.warn(`⚠️  Gmail failed → ${to} | ${err.message}`);
-      // Fall through to Resend
+      return false;
     }
   }
 
-  // ── Option 2: Resend (Railway production backup) ──
-  if (process.env.RESEND_API_KEY) {
+  // ── Option 2: Resend (production only) ──
+  if (process.env.NODE_ENV === 'production' && process.env.RESEND_API_KEY) {
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
       
@@ -73,8 +71,8 @@ const sendMail = async ({ to, subject, html }) => {
     }
   }
 
-  // ── No email configured ──
-  console.warn(`⚠️  Email skipped → ${to} | No email service configured`);
+  // ── No email configured or wrong environment ──
+  console.warn(`⚠️  Email skipped → ${to} | Email service not available in ${process.env.NODE_ENV} environment`);
   return false;
 };
 
