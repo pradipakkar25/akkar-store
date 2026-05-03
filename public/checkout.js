@@ -10,31 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // Check authentication
 function checkAuth() {
   const token = localStorage.getItem('token');
-  const userStr = localStorage.getItem('user');
-  
   if (!token) {
-    alert('Session expired. Please login first');
+    alert('Please login first');
     window.location.href = '/';
-    return;
-  }
-
-  let user = {};
-  try {
-    user = JSON.parse(userStr || '{}');
-  } catch (e) {
-    console.error('Failed to parse user:', e);
-    localStorage.removeItem('user');
-    alert('Session error. Please login again');
-    window.location.href = '/';
-    return;
-  }
-
-  if (!user._id && !user.id) {
-    alert('User data corrupted. Please login again');
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/';
-    return;
   }
 }
 
@@ -115,78 +93,86 @@ async function handleCheckout(e) {
   submitBtn.disabled = true;
   submitBtn.textContent = '⏳ Processing...';
 
-  try {
-    const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+  const token = localStorage.getItem('token');
+  const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-    // Validate token
-    if (!token) {
-      throw new Error('Session expired. Please login again.');
-    }
+  console.log('Checkout Debug:', { hasToken: !!token, hasUser: !!user._id, cartItems: cart.length });
 
-    // Parse and validate user
-    let user = {};
-    try {
-      user = JSON.parse(userStr || '{}');
-    } catch (e) {
-      throw new Error('User data corrupted. Please login again.');
-    }
-
-    const userId = user._id || user.id;
-    if (!userId) {
-      throw new Error('User ID not found. Please login again.');
-    }
-
-    // Validate cart
-    if (cart.length === 0) {
-      throw new Error('Your cart is empty');
-    }
-
-    // Validate customer details
-    const customerDetails = {
-      name:    document.getElementById('customerName').value.trim(),
-      email:   document.getElementById('customerEmail').value.trim(),
-      phone:   document.getElementById('customerPhone').value.trim(),
-      address: document.getElementById('customerAddress').value.trim()
-    };
-
-    if (!customerDetails.name || !customerDetails.email || !customerDetails.phone || !customerDetails.address) {
-      throw new Error('Please fill all delivery details');
-    }
-
-    // Validate payment method
-    const paymentMethodEl = document.querySelector('input[name="paymentMethod"]:checked');
-    if (!paymentMethodEl) {
-      throw new Error('Please select a payment method');
-    }
-
-    const paymentMethod = paymentMethodEl.value;
-    const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-    if (totalPrice <= 0) {
-      throw new Error('Invalid order total');
-    }
-
-    const checkoutRequest = {
-      items: cart,
-      customerDetails,
-      totalPrice,
-      paymentMethod
-    };
-
-    // Store checkout request with user ID to prevent cross-user collision
-    const checkoutKey = `checkout_${userId}`;
-    sessionStorage.setItem(checkoutKey, JSON.stringify(checkoutRequest));
-    
-    // Redirect to order confirmation page
-    window.location.href = '/order-confirmation';
-
-  } catch (error) {
-    alert('Error: ' + error.message);
+  // Validate authentication
+  if (!token) {
+    alert('Session expired. Please login again.');
     submitBtn.disabled = false;
     submitBtn.textContent = 'Place Order';
+    window.location.href = '/';
+    return;
   }
+
+  if (!user._id) {
+    console.error('User data missing:', user);
+    alert('User data missing. Please login again.');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Place Order';
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/';
+    return;
+  }
+
+  if (cart.length === 0) {
+    alert('Your cart is empty');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Place Order';
+    return;
+  }
+
+  const customerDetails = {
+    name:    document.getElementById('customerName').value,
+    email:   document.getElementById('customerEmail').value,
+    phone:   document.getElementById('customerPhone').value,
+    address: document.getElementById('customerAddress').value
+  };
+
+  // Validate customer details
+  if (!customerDetails.name || !customerDetails.email || !customerDetails.phone || !customerDetails.address) {
+    alert('Please fill all delivery details');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Place Order';
+    return;
+  }
+
+  const paymentMethodEl = document.querySelector('input[name="paymentMethod"]:checked');
+  if (!paymentMethodEl) {
+    alert('Please select a payment method');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Place Order';
+    return;
+  }
+
+  const paymentMethod = paymentMethodEl.value;
+
+  // Use discounted price (item.price) — this is what the customer pays
+  const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  const checkoutRequest = {
+    items: cart,
+    customerDetails,
+    totalPrice,
+    paymentMethod
+  };
+
+  console.log('✓ Checkout validation passed, storing request...');
+
+  // Store checkout request with user ID to prevent cross-user collision
+  const checkoutKey = `checkout_${user._id}`;
+  sessionStorage.setItem(checkoutKey, JSON.stringify(checkoutRequest));
+  
+  console.log('✓ Redirecting to order confirmation...');
+  
+  // Redirect to order confirmation page
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'Place Order';
+  window.location.href = '/order-confirmation';
 }
 
 // Logout

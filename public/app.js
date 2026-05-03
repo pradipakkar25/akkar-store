@@ -20,59 +20,19 @@ function setupEventListeners() {
 
 // Check authentication status
 function checkAuth() {
-  try {
-    const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  if (token && (user._id || user.id)) {
+    document.getElementById('loginBtn').style.display = 'none';
+    document.getElementById('logoutBtn').style.display = 'inline-block';
+    document.getElementById('accountBtn').style.display = 'inline-block';
+    document.getElementById('userGreeting').style.display = 'inline-block';
+    document.getElementById('userGreeting').textContent = `Welcome, ${user.name}!`;
     
-    // Parse user data safely
-    let user = {};
-    if (userStr) {
-      try {
-        user = JSON.parse(userStr);
-      } catch (e) {
-        console.error('Failed to parse user data:', e);
-        localStorage.removeItem('user');
-      }
+    if (user.isAdmin) {
+      document.getElementById('adminBtn').style.display = 'inline-block';
     }
-
-    // Check if user has valid ID (either _id or id)
-    const hasValidId = user && (user._id || user.id);
-    
-    if (token && hasValidId) {
-      // User is authenticated
-      const loginBtn = document.getElementById('loginBtn');
-      const logoutBtn = document.getElementById('logoutBtn');
-      const accountBtn = document.getElementById('accountBtn');
-      const userGreeting = document.getElementById('userGreeting');
-      const adminBtn = document.getElementById('adminBtn');
-
-      if (loginBtn) loginBtn.style.display = 'none';
-      if (logoutBtn) logoutBtn.style.display = 'inline-block';
-      if (accountBtn) accountBtn.style.display = 'inline-block';
-      if (userGreeting) {
-        userGreeting.style.display = 'inline-block';
-        userGreeting.textContent = `Welcome, ${user.name || 'User'}!`;
-      }
-      
-      if (user.isAdmin && adminBtn) {
-        adminBtn.style.display = 'inline-block';
-      }
-    } else {
-      // User is not authenticated
-      const loginBtn = document.getElementById('loginBtn');
-      const logoutBtn = document.getElementById('logoutBtn');
-      const accountBtn = document.getElementById('accountBtn');
-      const userGreeting = document.getElementById('userGreeting');
-      const adminBtn = document.getElementById('adminBtn');
-
-      if (loginBtn) loginBtn.style.display = 'inline-block';
-      if (logoutBtn) logoutBtn.style.display = 'none';
-      if (accountBtn) accountBtn.style.display = 'none';
-      if (userGreeting) userGreeting.style.display = 'none';
-      if (adminBtn) adminBtn.style.display = 'none';
-    }
-  } catch (error) {
-    console.error('Error in checkAuth:', error);
   }
 }
 
@@ -370,6 +330,7 @@ function proceedToCheckout() {
 }
 
 // Handle login
+// Handle login
 async function handleLogin(e) {
   e.preventDefault();
   const email = document.getElementById('loginEmail').value;
@@ -390,8 +351,13 @@ async function handleLogin(e) {
       return;
     }
 
+    // Save token and user data
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
+    
+    // Verify data was saved
+    console.log('✓ Login successful - User data saved:', data.user);
+    
     closeLoginModal();
     checkAuth();
     updateCartCount();
@@ -403,6 +369,7 @@ async function handleLogin(e) {
     }
   } catch (error) {
     errorMsg.textContent = 'Error: ' + error.message;
+    console.error('Login error:', error);
   }
 }
 
