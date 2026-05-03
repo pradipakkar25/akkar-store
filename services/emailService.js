@@ -1,35 +1,85 @@
+const nodemailer = require('nodemailer');
 const sgMail = require('@sendgrid/mail');
 
 const STORE_URL = process.env.STORE_URL || 'http://localhost:5000';
 
-// Initialize SendGrid
+// Log email service status on startup
+console.log('\n═══════════════════════════════════════════════════════════');
+console.log('📧 EMAIL SERVICE CONFIGURATION');
+console.log('═══════════════════════════════════════════════════════════');
+console.log('SendGrid API Key:', process.env.SENDGRID_API_KEY ? '✓ Configured' : '✗ Not configured');
+console.log('Gmail SMTP:', (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) ? '✓ Configured' : '✗ Not configured');
+console.log('═══════════════════════════════════════════════════════════\n');
+
+// Configure SendGrid
 if (process.env.SENDGRID_API_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  console.log('✓ SendGrid configured');
-} else {
-  console.log('⚠️  SendGrid API key not configured - emails will be skipped');
+  console.log('✓ SendGrid configured for production');
 }
 
 // ─── Shared email wrapper ─────────────────────────────────────────────────────
+// Uses SendGrid if SENDGRID_API_KEY is set (Railway/production)
+// Falls back to Gmail SMTP if EMAIL_USER + EMAIL_PASSWORD are set (localhost)
 const sendMail = async ({ to, subject, html }) => {
-  if (!process.env.SENDGRID_API_KEY) {
-    console.warn(`⚠️  Email skipped → ${to} | SendGrid not configured`);
-    return false;
+
+  // ── Option 1: SendGrid (works on Railway, no SMTP blocking) ──
+  if (process.env.SENDGRID_API_KEY) {
+    try {
+      const msg = {
+        to: to,
+        from: 'Akkar General & Bangles Store <noreply@akkargeneralstore.com>',
+        subject: subject,
+        html: html
+      };
+
+      await sgMail.send(msg);
+      console.log(`✓ Email sent (SendGrid) → ${to} | ${subject}`);
+      return true;
+    } catch (err) {
+      console.error(`✗ SendGrid error → ${to} | ${err.message}`);
+      return false;
+    }
   }
 
-  try {
-    await sgMail.send({
-      to,
-      from: process.env.SENDGRID_FROM_EMAIL || 'noreply@akkar-store.com',
-      subject,
-      html
-    });
-    console.log(`✓ Email sent (SendGrid) → ${to} | ${subject}`);
-    return true;
-  } catch (error) {
-    console.error(`✗ SendGrid error → ${to} | ${error.message}`);
-    return false;
+  // ── Option 2: Gmail SMTP (localhost development) ──
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASSWORD
+        },
+        connectionTimeout: 3000,
+        socketTimeout: 3000
+      });
+
+      // Send with timeout
+      const sendPromise = transporter.sendMail({
+        from: `"Akkar General & Bangles Store" <${process.env.EMAIL_USER}>`,
+        to,
+        subject,
+        html
+      });
+
+      // Set a 5 second timeout
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Email send timeout')), 5000)
+      );
+
+      await Promise.race([sendPromise, timeoutPromise]);
+      console.log(`✓ Email sent (Gmail) → ${to} | ${subject}`);
+      return true;
+    } catch (err) {
+      console.warn(`⚠️  Email skipped (timeout/error) → ${to} | ${err.message}`);
+      // Don't throw - just log and return false
+      return false;
+    }
   }
+
+  // ── No email configured ──
+  console.warn(`⚠️  Email skipped → ${to} | No email service configured`);
+  return false;
 };
 
 // ─── Shared HTML shell ───────────────────────────────────────────────────────
