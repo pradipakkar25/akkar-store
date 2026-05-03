@@ -12,21 +12,32 @@ const sendMail = async ({ to, subject, html }) => {
   if (process.env.RESEND_API_KEY) {
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
-      const { error } = await resend.emails.send({
+      
+      // Send email with error handling
+      const response = await resend.emails.send({
         from: 'Akkar General & Bangles Store <onboarding@resend.dev>',
         to,
         subject,
         html
       });
-      if (error) {
-        console.error(`✗ Resend failed → ${to} | ${error.message}`);
+      
+      // Check if response has error
+      if (response && response.error) {
+        console.error(`✗ Resend failed → ${to} | ${response.error.message}`);
         return false;
       }
-      console.log(`✓ Email sent (Resend) → ${to} | ${subject}`);
-      return true;
+      
+      // Check if response has id (success)
+      if (response && response.id) {
+        console.log(`✓ Email sent (Resend) → ${to} | ${subject}`);
+        return true;
+      }
+      
+      console.error(`✗ Resend failed → ${to} | Unknown error`);
+      return false;
     } catch (err) {
       console.error(`✗ Resend error → ${to} | ${err.message}`);
-      return false;
+      // Fall through to Gmail SMTP as backup
     }
   }
 
