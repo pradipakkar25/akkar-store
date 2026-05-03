@@ -5,6 +5,11 @@ const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 // ─── Cloudinary Configuration ────────────────────────────────────────────────
+console.log('Checking Cloudinary configuration...');
+console.log('CLOUDINARY_CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME ? '✓ Set' : '✗ Not set');
+console.log('CLOUDINARY_API_KEY:', process.env.CLOUDINARY_API_KEY ? '✓ Set' : '✗ Not set');
+console.log('CLOUDINARY_API_SECRET:', process.env.CLOUDINARY_API_SECRET ? '✓ Set' : '✗ Not set');
+
 if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -13,7 +18,7 @@ if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && proce
   });
   console.log('✓ Cloudinary configured for production');
 } else {
-  console.log('ℹ Cloudinary not configured, using local storage for development');
+  console.log('ℹ Cloudinary not fully configured, using local storage for development');
 }
 
 // ─── Product image upload ────────────────────────────────────────────────────
@@ -21,11 +26,11 @@ let uploadProduct;
 if (process.env.CLOUDINARY_CLOUD_NAME) {
   const productStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
-    params: {
+    params: async (req, file) => ({
       folder: 'akkar-store/products',
       resource_type: 'auto',
       allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp']
-    }
+    })
   });
   uploadProduct = multer({
     storage: productStorage,
@@ -56,11 +61,11 @@ let uploadBanner;
 if (process.env.CLOUDINARY_CLOUD_NAME) {
   const bannerStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
-    params: {
+    params: async (req, file) => ({
       folder: 'akkar-store/banners',
       resource_type: 'auto',
       allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp']
-    }
+    })
   });
   uploadBanner = multer({
     storage: bannerStorage,
@@ -91,11 +96,11 @@ let uploadPayment;
 if (process.env.CLOUDINARY_CLOUD_NAME) {
   const paymentStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
-    params: {
+    params: async (req, file) => ({
       folder: 'akkar-store/payment-proofs',
       resource_type: 'auto',
       allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf']
-    }
+    })
   });
   uploadPayment = multer({
     storage: paymentStorage,
