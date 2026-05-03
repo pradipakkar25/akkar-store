@@ -58,6 +58,14 @@ async function startServer() {
   await connectDB();
   await ensureDefaultAdmin();
 
+  // Log Cloudinary status on startup
+  console.log('\n═══════════════════════════════════════════════════════════');
+  console.log('🚀 AKKAR STORE SERVER STARTING');
+  console.log('═══════════════════════════════════════════════════════════');
+  console.log('Environment:', process.env.NODE_ENV);
+  console.log('Cloudinary:', process.env.CLOUDINARY_CLOUD_NAME ? '✓ Enabled' : '✗ Disabled (using local storage)');
+  console.log('═══════════════════════════════════════════════════════════\n');
+
   // Middleware
   app.use(cors());
   app.use(express.json());
