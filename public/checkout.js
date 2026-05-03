@@ -93,12 +93,33 @@ async function handleCheckout(e) {
   submitBtn.disabled = true;
   submitBtn.textContent = '⏳ Processing...';
 
+  const token = localStorage.getItem('token');
   const cart = JSON.parse(localStorage.getItem('cart') || '[]');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  if (!user._id) {
-    alert('Please login first');
+  // Validate authentication
+  if (!token) {
+    alert('Session expired. Please login again.');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Place Order';
     window.location.href = '/';
+    return;
+  }
+
+  if (!user._id) {
+    alert('User data missing. Please login again.');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Place Order';
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/';
+    return;
+  }
+
+  if (cart.length === 0) {
+    alert('Your cart is empty');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Place Order';
     return;
   }
 
@@ -109,7 +130,23 @@ async function handleCheckout(e) {
     address: document.getElementById('customerAddress').value
   };
 
-  const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+  // Validate customer details
+  if (!customerDetails.name || !customerDetails.email || !customerDetails.phone || !customerDetails.address) {
+    alert('Please fill all delivery details');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Place Order';
+    return;
+  }
+
+  const paymentMethodEl = document.querySelector('input[name="paymentMethod"]:checked');
+  if (!paymentMethodEl) {
+    alert('Please select a payment method');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Place Order';
+    return;
+  }
+
+  const paymentMethod = paymentMethodEl.value;
 
   // Use discounted price (item.price) — this is what the customer pays
   const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
