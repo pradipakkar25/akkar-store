@@ -23,7 +23,7 @@ function checkAuth() {
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  if (token && user.id) {
+  if (token && (user._id || user.id)) {
     document.getElementById('loginBtn').style.display = 'none';
     document.getElementById('logoutBtn').style.display = 'inline-block';
     document.getElementById('accountBtn').style.display = 'inline-block';
