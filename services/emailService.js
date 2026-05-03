@@ -1,79 +1,35 @@
-const nodemailer = require('nodemailer');
-const { Resend } = require('resend');
+const sgMail = require('@sendgrid/mail');
 
 const STORE_URL = process.env.STORE_URL || 'http://localhost:5000';
 
+// Initialize SendGrid
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  console.log('✓ SendGrid configured');
+} else {
+  console.log('⚠️  SendGrid API key not configured - emails will be skipped');
+}
+
 // ─── Shared email wrapper ─────────────────────────────────────────────────────
-// Uses Resend if RESEND_API_KEY is set (Railway/production)
-// Falls back to Gmail SMTP if EMAIL_USER + EMAIL_PASSWORD are set (localhost)
 const sendMail = async ({ to, subject, html }) => {
-
-  // ── Option 1: Gmail SMTP (localhost development only) ──
-  if (process.env.NODE_ENV === 'development' && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
-    try {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASSWORD
-        },
-        connectionTimeout: 5000,
-        socketTimeout: 5000
-      });
-
-      const sendPromise = transporter.sendMail({
-        from: `"Akkar General & Bangles Store" <${process.env.EMAIL_USER}>`,
-        to,
-        subject,
-        html
-      });
-
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Email send timeout')), 10000)
-      );
-
-      await Promise.race([sendPromise, timeoutPromise]);
-      console.log(`✓ Email sent (Gmail) → ${to} | ${subject}`);
-      return true;
-    } catch (err) {
-      console.warn(`⚠️  Gmail failed → ${to} | ${err.message}`);
-      return false;
-    }
+  if (!process.env.SENDGRID_API_KEY) {
+    console.warn(`⚠️  Email skipped → ${to} | SendGrid not configured`);
+    return false;
   }
 
-  // ── Option 2: Resend (production only) ──
-  if (process.env.NODE_ENV === 'production' && process.env.RESEND_API_KEY) {
-    try {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      
-      const result = await resend.emails.send({
-        from: 'Akkar Store <onboarding@resend.dev>',
-        to: to,
-        subject: subject,
-        html: html
-      });
-      
-      if (result.error) {
-        console.error(`✗ Resend failed → ${to} | ${result.error.message}`);
-        return false;
-      }
-      
-      if (result.data && result.data.id) {
-        console.log(`✓ Email sent (Resend) → ${to} | ${subject}`);
-        return true;
-      }
-      
-      return false;
-      
-    } catch (err) {
-      console.error(`✗ Resend error → ${to} | ${err.message}`);
-      return false;
-    }
+  try {
+    await sgMail.send({
+      to,
+      from: process.env.SENDGRID_FROM_EMAIL || 'noreply@akkar-store.com',
+      subject,
+      html
+    });
+    console.log(`✓ Email sent (SendGrid) → ${to} | ${subject}`);
+    return true;
+  } catch (error) {
+    console.error(`✗ SendGrid error → ${to} | ${error.message}`);
+    return false;
   }
-
-  // ── No email configured or wrong environment ──
-  console.warn(`⚠️  Email skipped → ${to} | Email service not available in ${process.env.NODE_ENV} environment`);
-  return false;
 };
 
 // ─── Shared HTML shell ───────────────────────────────────────────────────────
