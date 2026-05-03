@@ -104,7 +104,8 @@ function renderConfirmedOrder(order) {
   const banner = document.getElementById('statusBanner');
   banner.style.display = 'block';
 
-  if (order.paymentStatus === 'completed' || order.paymentVerificationStatus === 'verified') {
+  // Only show "Order Confirmed" if payment is actually verified
+  if (order.paymentStatus === 'completed' && order.paymentVerificationStatus === 'verified') {
     // Fully confirmed
     banner.innerHTML = `
       <div class="order-confirmed-banner">
@@ -139,7 +140,7 @@ function renderConfirmedOrder(order) {
     // Re-attach upload to existing order
     setupUploadProofForm(order._id);
   } else {
-    // Order created but no screenshot yet
+    // Order created but no screenshot yet — show payment upload section
     document.getElementById('paymentSection').style.display = 'block';
     document.getElementById('uploadSection').style.display  = 'block';
     setupUploadProofForm(order._id);
