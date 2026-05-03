@@ -8,42 +8,7 @@ const STORE_URL = process.env.STORE_URL || 'http://localhost:5000';
 // Falls back to Gmail SMTP if EMAIL_USER + EMAIL_PASSWORD are set (localhost)
 const sendMail = async ({ to, subject, html }) => {
 
-  // ── Option 1: Resend (works on Railway, no SMTP blocking) ──
-  if (process.env.RESEND_API_KEY) {
-    try {
-      // Initialize Resend with API key
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      
-      // Send email using Resend v7 API
-      const result = await resend.emails.send({
-        from: 'Akkar Store <onboarding@resend.dev>',
-        to: to,
-        subject: subject,
-        html: html
-      });
-      
-      // Check for errors in response
-      if (result.error) {
-        console.error(`✗ Resend failed → ${to} | ${result.error.message}`);
-        return false;
-      }
-      
-      if (result.data && result.data.id) {
-        console.log(`✓ Email sent (Resend) → ${to} | ${subject} | ID: ${result.data.id}`);
-        return true;
-      }
-      
-      console.warn(`⚠️  Unexpected Resend response → ${to}`, result);
-      return false;
-      
-    } catch (err) {
-      console.error(`✗ Resend error → ${to} | ${err.message}`);
-      console.error('Stack:', err.stack);
-      return false;
-    }
-  }
-
-  // ── Option 2: Gmail SMTP (localhost development) ──
+  // ── Option 1: Gmail SMTP (localhost development + Railway fallback) ──
   if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
     try {
       const transporter = nodemailer.createTransport({
@@ -52,8 +17,8 @@ const sendMail = async ({ to, subject, html }) => {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASSWORD
         },
-        connectionTimeout: 3000,
-        socketTimeout: 3000
+        connectionTimeout: 5000,
+        socketTimeout: 5000
       });
 
       // Send with timeout
@@ -64,17 +29,46 @@ const sendMail = async ({ to, subject, html }) => {
         html
       });
 
-      // Set a 5 second timeout
+      // Set a 10 second timeout
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Email send timeout')), 5000)
+        setTimeout(() => reject(new Error('Email send timeout')), 10000)
       );
 
       await Promise.race([sendPromise, timeoutPromise]);
       console.log(`✓ Email sent (Gmail) → ${to} | ${subject}`);
       return true;
     } catch (err) {
-      console.warn(`⚠️  Email skipped (timeout/error) → ${to} | ${err.message}`);
-      // Don't throw - just log and return false
+      console.warn(`⚠️  Gmail failed → ${to} | ${err.message}`);
+      // Fall through to Resend
+    }
+  }
+
+  // ── Option 2: Resend (Railway production backup) ──
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      
+      const result = await resend.emails.send({
+        from: 'Akkar Store <onboarding@resend.dev>',
+        to: to,
+        subject: subject,
+        html: html
+      });
+      
+      if (result.error) {
+        console.error(`✗ Resend failed → ${to} | ${result.error.message}`);
+        return false;
+      }
+      
+      if (result.data && result.data.id) {
+        console.log(`✓ Email sent (Resend) → ${to} | ${subject}`);
+        return true;
+      }
+      
+      return false;
+      
+    } catch (err) {
+      console.error(`✗ Resend error → ${to} | ${err.message}`);
       return false;
     }
   }
