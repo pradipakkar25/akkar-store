@@ -141,8 +141,8 @@ router.put('/:id', verifyToken, isAdmin, upload.single('image'), [
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    // Delete uploaded file if validation fails
-    if (req.file) {
+    // Delete uploaded file if validation fails (local storage only)
+    if (req.file && req.file.filename && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
     return res.status(400).json({ errors: errors.array() });
@@ -153,7 +153,7 @@ router.put('/:id', verifyToken, isAdmin, upload.single('image'), [
 
     let product = await Product.findById(req.params.id);
     if (!product) {
-      if (req.file) fs.unlinkSync(req.file.path);
+      if (req.file && req.file.filename && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(404).json({ message: 'Product not found' });
     }
 
@@ -183,8 +183,8 @@ router.put('/:id', verifyToken, isAdmin, upload.single('image'), [
     await product.save();
     res.json({ message: 'Product updated successfully', product });
   } catch (error) {
-    // Delete uploaded file if save fails
-    if (req.file) {
+    // Delete uploaded file if save fails (local storage only)
+    if (req.file && req.file.filename && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
     res.status(500).json({ message: 'Server error', error: error.message });

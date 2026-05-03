@@ -116,8 +116,9 @@ async function startServer() {
 
   // Error handling middleware
   app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ message: 'Something went wrong!', error: err.message });
+    // err.stack may be undefined for non-Error objects; fall back to the full error
+    console.error(err.stack || err.message || err);
+    res.status(500).json({ message: 'Something went wrong!', error: err.message || String(err) });
   });
 
   const server = app.listen(PORT, () => {
