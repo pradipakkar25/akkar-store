@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const sgMail = require('@sendgrid/mail');
+const { Resend } = require('resend');
 
 const STORE_URL = process.env.STORE_URL || 'http://localhost:5000';
 
@@ -7,36 +7,42 @@ const STORE_URL = process.env.STORE_URL || 'http://localhost:5000';
 console.log('\n═══════════════════════════════════════════════════════════');
 console.log('📧 EMAIL SERVICE CONFIGURATION');
 console.log('═══════════════════════════════════════════════════════════');
-console.log('SendGrid API Key:', process.env.SENDGRID_API_KEY ? '✓ Configured' : '✗ Not configured');
+console.log('Resend API Key:', process.env.RESEND_API_KEY ? '✓ Configured' : '✗ Not configured');
 console.log('Gmail SMTP:', (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) ? '✓ Configured' : '✗ Not configured');
 console.log('═══════════════════════════════════════════════════════════\n');
 
-// Configure SendGrid
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  console.log('✓ SendGrid configured for production');
-}
-
 // ─── Shared email wrapper ─────────────────────────────────────────────────────
-// Uses SendGrid if SENDGRID_API_KEY is set (Railway/production)
+// Uses Resend if RESEND_API_KEY is set (Railway/production)
 // Falls back to Gmail SMTP if EMAIL_USER + EMAIL_PASSWORD are set (localhost)
 const sendMail = async ({ to, subject, html }) => {
 
-  // ── Option 1: SendGrid (works on Railway, no SMTP blocking) ──
-  if (process.env.SENDGRID_API_KEY) {
+  // ── Option 1: Resend (works on Railway, no SMTP blocking) ──
+  if (process.env.RESEND_API_KEY) {
     try {
-      const msg = {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      
+      const result = await resend.emails.send({
+        from: 'Akkar Store <onboarding@resend.dev>',
         to: to,
-        from: 'Akkar General & Bangles Store <noreply@akkargeneralstore.com>',
         subject: subject,
         html: html
-      };
-
-      await sgMail.send(msg);
-      console.log(`✓ Email sent (SendGrid) → ${to} | ${subject}`);
-      return true;
+      });
+      
+      if (result.error) {
+        console.error(`✗ Resend failed → ${to} | ${result.error.message}`);
+        return false;
+      }
+      
+      if (result.data && result.data.id) {
+        console.log(`✓ Email sent (Resend) → ${to} | ${subject}`);
+        return true;
+      }
+      
+      console.warn(`⚠️  Unexpected Resend response → ${to}`);
+      return false;
+      
     } catch (err) {
-      console.error(`✗ SendGrid error → ${to} | ${err.message}`);
+      console.error(`✗ Resend error → ${to} | ${err.message}`);
       return false;
     }
   }
