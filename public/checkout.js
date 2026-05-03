@@ -91,6 +91,7 @@ async function handleCheckout(e) {
   const submitBtn = e.target.querySelector('button[type="submit"]');
   if (submitBtn.disabled) return;
   submitBtn.disabled = true;
+  submitBtn.textContent = '⏳ Processing...';
 
   const cart = JSON.parse(localStorage.getItem('cart') || '[]');
 
@@ -113,8 +114,12 @@ async function handleCheckout(e) {
     paymentMethod
   };
 
+  // Store checkout request for order confirmation page
   sessionStorage.setItem('checkoutRequest', JSON.stringify(checkoutRequest));
+  
+  // Redirect to order confirmation page
   submitBtn.disabled = false;
+  submitBtn.textContent = 'Place Order';
   window.location.href = '/order-confirmation';
 }
 

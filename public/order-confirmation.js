@@ -28,9 +28,21 @@ async function loadOrderConfirmation() {
     return;
   }
 
-  // If order already created, fetch fresh data
+  // If order already created, fetch fresh data to verify it's still valid
   if (storedOrder._id) {
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    // Verify this order belongs to the current user
     const order = await fetchOrder(storedOrder._id);
+    if (!order._id) {
+      // Order not found or invalid
+      sessionStorage.removeItem('orderData');
+      alert('Order not found. Please start a new order.');
+      window.location.href = '/';
+      return;
+    }
+    
     renderConfirmedOrder(order);
     return;
   }
