@@ -130,33 +130,34 @@ if (process.env.CLOUDINARY_CLOUD_NAME) {
 // Helper: get the public URL from an uploaded file
 function getFileUrl(file, localPrefix = '/uploads/') {
   if (!file) return null;
-  
-  console.log('getFileUrl called with:', { 
-    hasSecureUrl: !!file.secure_url, 
-    hasPath: !!file.path, 
+
+  console.log('getFileUrl called with:', {
+    hasSecureUrl: !!file.secure_url,
+    hasPath: !!file.path,
     hasFilename: !!file.filename,
     fileKeys: Object.keys(file)
   });
-  
-  // Cloudinary file — has secure_url property
+
+  // multer-storage-cloudinary sets file.path to the Cloudinary secure URL.
+  // Check this first — it is the canonical property for Cloudinary uploads.
+  if (file.path && file.path.startsWith('http')) {
+    console.log('✓ Using Cloudinary path (secure URL):', file.path);
+    return file.path;
+  }
+
+  // Some Cloudinary SDK versions expose secure_url directly on the file object.
   if (file.secure_url) {
     console.log('✓ Using Cloudinary secure_url:', file.secure_url);
     return file.secure_url;
   }
-  
-  // Cloudinary file — fallback to path
-  if (file.path) {
-    console.log('✓ Using Cloudinary path:', file.path);
-    return file.path;
-  }
-  
-  // Local file
+
+  // Local disk storage — multer sets file.filename, not file.path as a URL.
   if (file.filename) {
     const url = `${localPrefix}${file.filename}`;
     console.log('✓ Using local file:', url);
     return url;
   }
-  
+
   console.warn('⚠️ Could not determine file URL from:', file);
   return null;
 }

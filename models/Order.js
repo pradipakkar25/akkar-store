@@ -21,7 +21,8 @@ const orderSchema = new mongoose.Schema({
   orderNumber: {
     type: String,
     unique: true,
-    required: true
+    required: true,
+    default: () => `AK${Math.floor(100000 + Math.random() * 900000)}`
   },
   customerDetails: {
     name: {
@@ -75,10 +76,9 @@ const orderSchema = new mongoose.Schema({
   }
 });
 
-orderSchema.pre('save', function(next) {
-  if (!this.orderNumber) {
-    const randomPart = Math.floor(100000 + Math.random() * 900000);
-    this.orderNumber = `AK${randomPart}`;
+orderSchema.pre('validate', function(next) {
+  if (this.orderNumber == null || this.orderNumber === '') {
+    this.orderNumber = `AK${Math.floor(100000 + Math.random() * 900000)}`;
   }
   next();
 });
