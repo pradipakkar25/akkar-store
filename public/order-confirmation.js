@@ -18,8 +18,20 @@ function checkAuth() {
 
 // ─── Main loader ────────────────────────────────────────────────────────────
 async function loadOrderConfirmation() {
-  const checkoutRequest = JSON.parse(sessionStorage.getItem('checkoutRequest') || '{}');
-  const storedOrder    = JSON.parse(sessionStorage.getItem('orderData')      || '{}');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  
+  if (!user._id) {
+    alert('Please login first');
+    window.location.href = '/';
+    return;
+  }
+
+  // Use user-specific keys to prevent cross-user collision
+  const checkoutKey = `checkout_${user._id}`;
+  const orderKey = `order_${user._id}`;
+  
+  const checkoutRequest = JSON.parse(sessionStorage.getItem(checkoutKey) || '{}');
+  const storedOrder    = JSON.parse(sessionStorage.getItem(orderKey)      || '{}');
 
   // Nothing to show
   if (!checkoutRequest.items?.length && !storedOrder._id) {
@@ -31,13 +43,12 @@ async function loadOrderConfirmation() {
   // If order already created, fetch fresh data to verify it's still valid
   if (storedOrder._id) {
     const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
     
     // Verify this order belongs to the current user
     const order = await fetchOrder(storedOrder._id);
     if (!order._id) {
       // Order not found or invalid
-      sessionStorage.removeItem('orderData');
+      sessionStorage.removeItem(orderKey);
       alert('Order not found. Please start a new order.');
       window.location.href = '/';
       return;
@@ -104,8 +115,7 @@ function renderConfirmedOrder(order) {
   const banner = document.getElementById('statusBanner');
   banner.style.display = 'block';
 
-  // Only show "Order Confirmed" if payment is actually verified
-  if (order.paymentStatus === 'completed' && order.paymentVerificationStatus === 'verified') {
+  if (order.paymentStatus === 'completed' || order.paymentVerificationStatus === 'verified') {
     // Fully confirmed
     banner.innerHTML = `
       <div class="order-confirmed-banner">
@@ -140,7 +150,7 @@ function renderConfirmedOrder(order) {
     // Re-attach upload to existing order
     setupUploadProofForm(order._id);
   } else {
-    // Order created but no screenshot yet — show payment upload section
+    // Order created but no screenshot yet
     document.getElementById('paymentSection').style.display = 'block';
     document.getElementById('uploadSection').style.display  = 'block';
     setupUploadProofForm(order._id);
@@ -251,6 +261,7 @@ async function handleUploadProof(e, existingOrderId) {
   const fileInput    = document.getElementById('paymentScreenshot');
   const msgEl        = document.getElementById('uploadProofMessage');
   const errEl        = document.getElementById('uploadProofError');
+  const user        = JSON.parse(localStorage.getItem('user') || '{}');
 
   msgEl.textContent = '';
   errEl.textContent = '';
@@ -279,7 +290,8 @@ async function handleUploadProof(e, existingOrderId) {
       });
     } else {
       // New order — create it with the screenshot
-      const checkoutRequest = JSON.parse(sessionStorage.getItem('checkoutRequest') || '{}');
+      const checkoutKey = `checkout_${user._id}`;
+      const checkoutRequest = JSON.parse(sessionStorage.getItem(checkoutKey) || '{}');
       if (!checkoutRequest.items?.length) {
         errEl.textContent = 'Session expired. Please go back to the store and try again.';
         submitBtn.disabled = false;
@@ -307,9 +319,11 @@ async function handleUploadProof(e, existingOrderId) {
       return;
     }
 
-    // Save order to session and clear checkout request
-    sessionStorage.setItem('orderData', JSON.stringify(data.order));
-    sessionStorage.removeItem('checkoutRequest');
+    // Save order to session with user-specific key and clear checkout request
+    const orderKey = `order_${user._id}`;
+    const checkoutKey = `checkout_${user._id}`;
+    sessionStorage.setItem(orderKey, JSON.stringify(data.order));
+    sessionStorage.removeItem(checkoutKey);
 
     // Clear cart
     localStorage.removeItem('cart');
@@ -329,9 +343,13 @@ async function handleUploadProof(e, existingOrderId) {
 
 // ─── Download receipt ─────────────────────────────────────────────────────────
 function downloadReceipt() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const orderKey = `order_${user._id}`;
+  const checkoutKey = `checkout_${user._id}`;
+  
   const order = JSON.parse(
-    sessionStorage.getItem('orderData') ||
-    sessionStorage.getItem('checkoutRequest') || '{}'
+    sessionStorage.getItem(orderKey) ||
+    sessionStorage.getItem(checkoutKey) || '{}'
   );
 
   const content = `
@@ -366,10 +384,14 @@ Thank you for shopping at AB Stores!
 }
 
 function logout() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const orderKey = `order_${user._id}`;
+  const checkoutKey = `checkout_${user._id}`;
+  
   localStorage.removeItem('token');
   localStorage.removeItem('user');
-  sessionStorage.removeItem('orderData');
-  sessionStorage.removeItem('checkoutRequest');
+  sessionStorage.removeItem(orderKey);
+  sessionStorage.removeItem(checkoutKey);
   window.location.href = '/';
 }
 
@@ -380,8 +402,10 @@ function setupPaymentQueryForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const token   = localStorage.getItem('token');
+    const user    = JSON.parse(localStorage.getItem('user') || '{}');
     const message = document.getElementById('queryMessage').value.trim();
-    const order   = JSON.parse(sessionStorage.getItem('orderData') || '{}');
+    const orderKey = `order_${user._id}`;
+    const order   = JSON.parse(sessionStorage.getItem(orderKey) || '{}');
     const successEl = document.getElementById('querySuccess');
     const errorEl   = document.getElementById('queryError');
     const btn       = form.querySelector('button[type="submit"]');

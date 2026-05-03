@@ -94,6 +94,13 @@ async function handleCheckout(e) {
   submitBtn.textContent = '⏳ Processing...';
 
   const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  if (!user._id) {
+    alert('Please login first');
+    window.location.href = '/';
+    return;
+  }
 
   const customerDetails = {
     name:    document.getElementById('customerName').value,
@@ -114,8 +121,9 @@ async function handleCheckout(e) {
     paymentMethod
   };
 
-  // Store checkout request for order confirmation page
-  sessionStorage.setItem('checkoutRequest', JSON.stringify(checkoutRequest));
+  // Store checkout request with user ID to prevent cross-user collision
+  const checkoutKey = `checkout_${user._id}`;
+  sessionStorage.setItem(checkoutKey, JSON.stringify(checkoutRequest));
   
   // Redirect to order confirmation page
   submitBtn.disabled = false;
