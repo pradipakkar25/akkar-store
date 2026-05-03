@@ -18,7 +18,7 @@ async function adminLogin() {
   }
 
   try {
-    const response = await fetch(`${API_URL}/auth/login`, {
+    const response = await fetch(`${API_URL}/auth/admin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -99,7 +99,7 @@ async function loadDashboard() {
     document.getElementById('pendingOrders').textContent = orders.filter(o => o.orderStatus === 'pending').length;
 
     const totalSales = orders
-      .filter(o => o.orderStatus !== 'cancelled')
+      .filter(o => o.paymentStatus === 'completed' && o.orderStatus !== 'cancelled')
       .reduce((sum, o) => sum + o.totalPrice, 0);
     document.getElementById('totalSales').textContent = `₹${totalSales}`;
 

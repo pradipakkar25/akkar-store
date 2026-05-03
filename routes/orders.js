@@ -117,6 +117,16 @@ router.post('/payment-request', verifyToken, upload.single('screenshot'), async 
     await order.save();
     console.log('✓ Order created with payment proof:', order._id);
 
+    // DEDUCT STOCK for each item
+    for (let item of items) {
+      await Product.findByIdAndUpdate(
+        item.productId,
+        { $inc: { stock: -item.quantity } },
+        { new: true }
+      );
+      console.log('✓ Stock deducted for:', item.name, 'qty:', item.quantity);
+    }
+
     const orderDetails = {
       orderId: order._id,
       orderNumber: order.orderNumber,
@@ -190,6 +200,15 @@ router.post('/', verifyToken, [
     });
 
     await order.save();
+
+    // DEDUCT STOCK for each item
+    for (let item of items) {
+      await Product.findByIdAndUpdate(
+        item.productId,
+        { $inc: { stock: -item.quantity } },
+        { new: true }
+      );
+    }
 
     // Send emails non-blocking — won't crash if email fails
     const orderDetails = {
