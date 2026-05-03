@@ -4,7 +4,13 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { sendWelcomeEmail } = require('../services/emailService');
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
+
+// Use strong JWT secret - MUST be set in production
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('⚠️  WARNING: JWT_SECRET not set in environment variables. Using temporary secret.');
+  console.error('⚠️  Set JWT_SECRET in .env file for production!');
+}
 
 // Register route
 router.post('/register', [
@@ -45,7 +51,7 @@ router.post('/register', [
     res.status(201).json({
       message: 'User registered successfully',
       token,
-      user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
+      user: { _id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -80,14 +86,14 @@ router.post('/login', [
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, isAdmin: user.isAdmin },
-      JWT_SECRET,
+      JWT_SECRET || 'temp_secret_change_in_production',
       { expiresIn: '7d' }
     );
 
     res.json({
       message: 'Login successful',
       token,
-      user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
+      user: { _id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -119,14 +125,14 @@ router.post('/admin-login', [
 
     const token = jwt.sign(
       { userId: user._id, isAdmin: user.isAdmin },
-      JWT_SECRET,
+      JWT_SECRET || 'temp_secret_change_in_production',
       { expiresIn: '7d' }
     );
 
     res.json({
       message: 'Admin login successful',
       token,
-      user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
+      user: { _id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

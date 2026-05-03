@@ -9,7 +9,14 @@ console.log('📧 EMAIL SERVICE CONFIGURATION');
 console.log('═══════════════════════════════════════════════════════════');
 console.log('Resend API Key:', process.env.RESEND_API_KEY ? '✓ Configured' : '✗ Not configured');
 console.log('Gmail SMTP:', (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) ? '✓ Configured' : '✗ Not configured');
+console.log('Admin Email:', process.env.ADMIN_EMAIL ? `✓ ${process.env.ADMIN_EMAIL}` : '✗ Not configured (CRITICAL)');
 console.log('═══════════════════════════════════════════════════════════\n');
+
+if (!process.env.ADMIN_EMAIL) {
+  console.error('⚠️  CRITICAL: ADMIN_EMAIL not set in environment variables!');
+  console.error('⚠️  Admin will not receive order notifications and payment queries.');
+  console.error('⚠️  Set ADMIN_EMAIL in .env file immediately!');
+}
 
 // ─── Shared email wrapper ─────────────────────────────────────────────────────
 // Uses Resend if RESEND_API_KEY is set (Railway/production)
@@ -28,17 +35,18 @@ const sendMail = async ({ to, subject, html }) => {
         html: html
       });
       
+      // Resend returns { id, error } or { id } on success
       if (result.error) {
         console.error(`✗ Resend failed → ${to} | ${result.error.message}`);
         return false;
       }
       
-      if (result.data && result.data.id) {
-        console.log(`✓ Email sent (Resend) → ${to} | ${subject}`);
+      if (result.id) {
+        console.log(`✓ Email sent (Resend) → ${to} | ID: ${result.id}`);
         return true;
       }
       
-      console.warn(`⚠️  Unexpected Resend response → ${to}`);
+      console.warn(`⚠️  Unexpected Resend response → ${to}`, result);
       return false;
       
     } catch (err) {
@@ -212,6 +220,11 @@ const sendOrderConfirmationToCustomer = async ({ orderId, items, customerDetails
 // 3. ORDER NOTIFICATION — sent to admin when new order arrives
 // ═══════════════════════════════════════════════════════════════════════════════
 const sendOrderEmailToAdmin = async ({ orderId, items, customerDetails, totalPrice }) => {
+  if (!process.env.ADMIN_EMAIL) {
+    console.error('❌ ADMIN_EMAIL not configured - order notification not sent');
+    return false;
+  }
+  
   return sendMail({
     to: process.env.ADMIN_EMAIL,
     subject: `🛒 New Order ₹${totalPrice} — ${customerDetails.name}`,
@@ -310,6 +323,24 @@ const sendOfferBroadcast = async ({ recipients, offerTitle, offerBody, offerImag
 // 6. PAYMENT QUERY — customer sends a payment issue to admin
 // ═══════════════════════════════════════════════════════════════════════════════
 const sendPaymentQuery = async ({ customerName, customerEmail, orderId, queryMessage }) => {
+  if (!process.env.ADMIN_EMAIL) {
+    console.error('❌ ADMIN_EMAIL not configured - payment query not sent to admin');
+    // Still send confirmation to customer
+    return sendMail({
+      to: customerEmail,
+      subject: `✅ We received your payment query — Akkar Store`,
+      html: shell(`
+        <h2>We got your message! ✅</h2>
+        <p>Hi <strong>${customerName}</strong>,</p>
+        <p>Thank you for reaching out. We've received your payment query and will get back to you within <strong>24 hours</strong>.</p>
+        <div class="info-box">
+          <p><strong>Your message:</strong><br>${queryMessage}</p>
+        </div>
+        <p>If it's urgent, you can also reach us directly at <a href="mailto:${process.env.EMAIL_USER}">${process.env.EMAIL_USER}</a>.</p>
+      `)
+    });
+  }
+
   await sendMail({
     to: process.env.ADMIN_EMAIL,
     subject: `💬 Payment Query — ${customerName} | Order ${orderId}`,
