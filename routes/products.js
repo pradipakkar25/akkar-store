@@ -98,6 +98,8 @@ router.post('/', verifyToken, isAdmin, upload.single('image'), [
       image = '/uploads/placeholder.svg';
     }
 
+    console.log('Final image URL:', image);
+
     const product = new Product({
       name,
       price,
