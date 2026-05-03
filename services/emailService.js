@@ -11,31 +11,34 @@ const sendMail = async ({ to, subject, html }) => {
   // ── Option 1: Resend (works on Railway, no SMTP blocking) ──
   if (process.env.RESEND_API_KEY) {
     try {
+      // Initialize Resend with API key
       const resend = new Resend(process.env.RESEND_API_KEY);
       
-      // Validate Resend API key format
-      if (!process.env.RESEND_API_KEY.startsWith('re_')) {
-        console.warn(`⚠️  Invalid Resend API key format for ${to}`);
-        return false;
-      }
-      
-      const response = await resend.emails.send({
-        from: 'Akkar General & Bangles Store <onboarding@resend.dev>',
-        to,
-        subject,
-        html
+      // Send email using Resend v7 API
+      const result = await resend.emails.send({
+        from: 'Akkar Store <onboarding@resend.dev>',
+        to: to,
+        subject: subject,
+        html: html
       });
       
-      if (response.error) {
-        console.error(`✗ Resend failed → ${to} | ${response.error.message}`);
+      // Check for errors in response
+      if (result.error) {
+        console.error(`✗ Resend failed → ${to} | ${result.error.message}`);
         return false;
       }
       
-      console.log(`✓ Email sent (Resend) → ${to} | ${subject}`);
-      return true;
+      if (result.data && result.data.id) {
+        console.log(`✓ Email sent (Resend) → ${to} | ${subject} | ID: ${result.data.id}`);
+        return true;
+      }
+      
+      console.warn(`⚠️  Unexpected Resend response → ${to}`, result);
+      return false;
+      
     } catch (err) {
       console.error(`✗ Resend error → ${to} | ${err.message}`);
-      console.error('Full error:', err);
+      console.error('Stack:', err.stack);
       return false;
     }
   }
