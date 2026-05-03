@@ -28,6 +28,7 @@ if (process.env.CLOUDINARY_CLOUD_NAME) {
     cloudinary: cloudinary,
     params: async (req, file) => ({
       folder: 'akkar-store/products',
+      public_id: `product-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
       resource_type: 'auto',
       allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp']
     })
@@ -63,6 +64,7 @@ if (process.env.CLOUDINARY_CLOUD_NAME) {
     cloudinary: cloudinary,
     params: async (req, file) => ({
       folder: 'akkar-store/banners',
+      public_id: `banner-${Date.now()}`,
       resource_type: 'auto',
       allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp']
     })
@@ -98,6 +100,7 @@ if (process.env.CLOUDINARY_CLOUD_NAME) {
     cloudinary: cloudinary,
     params: async (req, file) => ({
       folder: 'akkar-store/payment-proofs',
+      public_id: `payment-${req.params?.id || 'new'}-${Date.now()}`,
       resource_type: 'auto',
       allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf']
     })
