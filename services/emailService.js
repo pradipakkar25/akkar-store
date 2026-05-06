@@ -7,7 +7,8 @@ const STORE_URL = process.env.STORE_URL || 'http://localhost:5000';
 console.log('\n═══════════════════════════════════════════════════════════');
 console.log('📧 EMAIL SERVICE CONFIGURATION');
 console.log('═══════════════════════════════════════════════════════════');
-console.log('Resend API Key:', process.env.RESEND_API_KEY ? '✓ Configured' : '✗ Not configured');
+const resendKey = process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.trim() : '';
+console.log('Resend API Key:', resendKey ? `✓ Configured (${resendKey.substring(0, 10)}...)` : '✗ Not configured');
 console.log('Gmail SMTP:', (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) ? '✓ Configured' : '✗ Not configured');
 console.log('Admin Email:', process.env.ADMIN_EMAIL ? `✓ ${process.env.ADMIN_EMAIL}` : '✗ Not configured (CRITICAL)');
 console.log('═══════════════════════════════════════════════════════════\n');
@@ -26,7 +27,15 @@ const sendMail = async ({ to, subject, html }) => {
   // ── Option 1: Resend (works on Railway, no SMTP blocking) ──
   if (process.env.RESEND_API_KEY) {
     try {
-      const resend = new Resend(process.env.RESEND_API_KEY);
+      // Ensure API key is properly trimmed and not empty
+      const apiKey = process.env.RESEND_API_KEY.trim();
+      
+      if (!apiKey || apiKey.length === 0) {
+        console.error(`✗ Resend API key is empty or invalid`);
+        return false;
+      }
+      
+      const resend = new Resend(apiKey);
       
       const result = await resend.emails.send({
         from: 'Akkar Store <onboarding@resend.dev>',
@@ -51,6 +60,7 @@ const sendMail = async ({ to, subject, html }) => {
       
     } catch (err) {
       console.error(`✗ Resend error → ${to} | ${err.message}`);
+      console.error(`✗ Resend error details:`, err);
       return false;
     }
   }
