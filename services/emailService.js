@@ -1,6 +1,35 @@
 const nodemailer = require('nodemailer');
 const { Resend } = require('resend');
 
+// Polyfill for Headers API (needed for Resend on older Node.js versions)
+if (typeof global.Headers === 'undefined') {
+  global.Headers = class Headers {
+    constructor(init = {}) {
+      this._headers = {};
+      if (init) {
+        Object.entries(init).forEach(([key, value]) => {
+          this._headers[key.toLowerCase()] = value;
+        });
+      }
+    }
+    get(name) {
+      return this._headers[name.toLowerCase()] || null;
+    }
+    set(name, value) {
+      this._headers[name.toLowerCase()] = value;
+    }
+    has(name) {
+      return name.toLowerCase() in this._headers;
+    }
+    delete(name) {
+      delete this._headers[name.toLowerCase()];
+    }
+    entries() {
+      return Object.entries(this._headers);
+    }
+  };
+}
+
 const STORE_URL = process.env.STORE_URL || 'http://localhost:5000';
 
 // Log email service status on startup
